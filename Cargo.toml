@@ -1,0 +1,18 @@
+[package]
+name = "bread"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+linux-raw-sys = { git = "https://github.com/morr0ne/linux-raw-sys.git", branch = "bootparam", version = "0.6.4", default-features = false, features = [
+    "no_std",
+    "bootparam",
+] }
+r-efi = { git = "https://github.com/morr0ne/r-efi.git", branch = "uguid", version = "4.3.0" }
+windows-sys = "0.52.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
