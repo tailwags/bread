@@ -6,10 +6,15 @@ version = 3
 name = "bread"
 version = "0.1.0"
 dependencies = [
+ "effie",
  "linux-raw-sys",
  "r-efi",
  "windows-sys",
 ]
+
+[[package]]
+name = "effie"
+version = "0.1.0"
 
 [[package]]
 name = "linux-raw-sys"

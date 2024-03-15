@@ -1,9 +1,18 @@
+[workspace]
+members = ["effie"]
+
 [package]
 name = "bread"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Federico Maria Morrone <contact@morrone.dev>"]
+repository = "https://github.com/morr0ne/bread"
+readme = "README.md"
+publish = false
 
 [dependencies]
+effie = { version = "0.1.0", path = "effie" }
 linux-raw-sys = { git = "https://github.com/morr0ne/linux-raw-sys.git", branch = "bootparam", version = "0.6.4", default-features = false, features = [
     "no_std",
     "bootparam",

@@ -1,0 +1,10 @@
+[package]
+name = "effie"
+version = "0.1.0"
+edition = "2021"
+authors = ["Federico Maria Morrone <contact@morrone.dev>"]
+description = "Idiomatic api to uefi"
+repository = "https://github.com/morr0ne/bread"
+readme = "../README.md"
+
+[dependencies]
