@@ -3,7 +3,7 @@ use core::ffi::c_void;
 use crate::{
     protocols::{SimpleTextInput, SimpleTextOutput},
     tables::{BootServices, RuntimeServices, TableHeader},
-    Guid, Handle,
+    u16_slice_from_ptr, Guid, Handle,
 };
 
 /// TODO
@@ -35,7 +35,7 @@ struct SystemTableRaw {
     /// TODO
     hdr: TableHeader,
     /// A pointer to a null terminated string that identifies the vendor that produces the system firmware for the platform
-    firmware_vendor: *mut u16,
+    firmware_vendor: *const u16,
     /// A firmware vendor specific value that identifies the revision of the system firmware for the platform.
     firmware_version: u32,
     /// The handle for the active console input device.
@@ -64,19 +64,15 @@ pub struct SystemTable {
 }
 
 impl SystemTable {
-    pub fn table_header(&self) -> &TableHeader {
-        unsafe { &(*self.inner).hdr }
+    pub fn firmware_vendor(&self) -> &[u16] {
+        unsafe { u16_slice_from_ptr((*self.inner).firmware_vendor) }
     }
 
-    pub fn firmware_vendor(&self) -> *mut u16 {
-        unsafe { (*self.inner).firmware_vendor }
+    pub fn con_in(&self) -> &SimpleTextInput {
+        unsafe { &(*self.inner).con_in }
     }
 
-    pub fn con_in(&mut self) -> &mut SimpleTextInput {
-        unsafe { &mut (*self.inner).con_in }
-    }
-
-    pub fn con_out(&mut self) -> &mut SimpleTextOutput {
-        unsafe { &mut (*self.inner).con_out }
+    pub fn con_out(&self) -> &SimpleTextOutput {
+        unsafe { &(*self.inner).con_out }
     }
 }

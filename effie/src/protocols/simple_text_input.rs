@@ -30,7 +30,7 @@ impl Protocol for SimpleTextInput {
 }
 
 impl SimpleTextInput {
-    pub fn reset(&mut self, extended_verification: bool) -> Status {
+    pub fn reset(&self, extended_verification: bool) -> Status {
         unsafe { ((*self.inner).reset)(self.inner, extended_verification) }
     }
 }

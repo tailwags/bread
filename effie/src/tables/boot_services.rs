@@ -1,5 +1,9 @@
+use crate::tables::TableHeader;
+
 #[repr(C)]
-struct BootServicesRaw {}
+struct BootServicesRaw {
+    hdr: TableHeader,
+}
 
 #[repr(transparent)]
 pub struct BootServices {

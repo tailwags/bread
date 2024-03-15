@@ -8,12 +8,13 @@ use effie::{tables::SystemTable, w, Handle};
 // CMDLINE=loglevel=3
 
 #[export_name = "efi_main"]
-pub unsafe extern "efiapi" fn main(_image_handle: Handle, mut system_table: SystemTable) -> ! {
-    system_table.con_out().clear_screen();
+pub unsafe extern "efiapi" fn main(_image_handle: Handle, system_table: SystemTable) -> ! {
+    let firmware_vendor = system_table.firmware_vendor();
+    let con_out = system_table.con_out();
 
-    system_table
-        .con_out()
-        .output_string(w!("I have become bread, bringer of gluten\n").cast_mut());
+    con_out.clear_screen();
+    con_out.output_string(w!("Found firmware vendor: "));
+    con_out.output_string(firmware_vendor);
 
     boot()
 }

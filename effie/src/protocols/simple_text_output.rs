@@ -3,8 +3,8 @@ use crate::{Guid, Protocol, Status};
 #[repr(C)]
 struct SimpleTextOutputRaw {
     reset: unsafe extern "efiapi" fn(this: *mut Self, extended_verification: bool) -> Status,
-    output_string: unsafe extern "efiapi" fn(this: *mut Self, string: *mut u16) -> Status,
-    test_string: unsafe extern "efiapi" fn(this: *mut Self, string: *mut u16) -> Status,
+    output_string: unsafe extern "efiapi" fn(this: *mut Self, string: *const u16) -> Status,
+    test_string: unsafe extern "efiapi" fn(this: *mut Self, string: *const u16) -> Status,
     query_mode: unsafe extern "efiapi" fn(
         this: *mut Self,
         mode_number: usize,
@@ -47,11 +47,11 @@ impl Protocol for SimpleTextOutput {
 }
 
 impl SimpleTextOutput {
-    pub fn output_string(&mut self, string: *mut u16) -> Status {
-        unsafe { ((*self.inner).output_string)(self.inner, string) }
+    pub fn output_string(&self, string: &[u16]) -> Status {
+        unsafe { ((*self.inner).output_string)(self.inner, string.as_ptr()) }
     }
 
-    pub fn clear_screen(&mut self) -> Status {
+    pub fn clear_screen(&self) -> Status {
         unsafe { ((*self.inner).clear_screen)(self.inner) }
     }
 }

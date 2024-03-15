@@ -51,7 +51,7 @@ macro_rules! w {
             }
             &{ buffer }
         };
-        OUTPUT.as_ptr()
+        OUTPUT
     }};
 }
 
