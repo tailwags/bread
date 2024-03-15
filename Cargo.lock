@@ -3,31 +3,32 @@
 version = 3
 
 [[package]]
+name = "bitflags"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
+
+[[package]]
 name = "bread"
 version = "0.1.0"
 dependencies = [
  "effie",
  "linux-raw-sys",
- "r-efi",
  "windows-sys",
 ]
 
 [[package]]
 name = "effie"
 version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "uguid",
+]
 
 [[package]]
 name = "linux-raw-sys"
 version = "0.6.4"
 source = "git+https://github.com/morr0ne/linux-raw-sys.git?branch=bootparam#d9985e14993d58f5beb1afa5bf40bc8a7c1e14d3"
-
-[[package]]
-name = "r-efi"
-version = "4.3.0"
-source = "git+https://github.com/morr0ne/r-efi.git?branch=uguid#113c0387bfab21a9735a1c5d15e1cd44671f87c0"
-dependencies = [
- "uguid",
-]
 
 [[package]]
 name = "uguid"

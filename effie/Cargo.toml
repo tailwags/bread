@@ -8,3 +8,5 @@ repository = "https://github.com/morr0ne/bread"
 readme = "../README.md"
 
 [dependencies]
+bitflags = "2.4.2"
+uguid = "2.2.0"
