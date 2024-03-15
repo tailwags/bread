@@ -17,7 +17,6 @@ linux-raw-sys = { git = "https://github.com/morr0ne/linux-raw-sys.git", branch =
     "no_std",
     "bootparam",
 ] }
-windows-sys = "0.52.0"
 
 [profile.release]
 lto = true

@@ -1,8 +1,7 @@
 #![no_main]
 #![no_std]
 
-use effie::{tables::SystemTable, Handle};
-use windows_sys::w;
+use effie::{tables::SystemTable, w, Handle};
 
 // KERNEL_PATH=boot:///efi/boot/vmlinuz
 // MODULE_PATH=boot:///efi/boot/initrd.gz
