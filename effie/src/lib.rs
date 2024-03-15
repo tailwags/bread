@@ -12,10 +12,7 @@ pub use protocol::Protocol;
 pub use status::Status;
 pub use uguid::Guid;
 
-#[doc(hidden)]
-pub mod w;
-#[doc(hidden)]
-pub use w::*;
+pub use effie_macros::w;
 
 // pub type Handle = *mut c_void;
 // pub type Event = *mut c_void;
