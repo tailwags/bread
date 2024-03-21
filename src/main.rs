@@ -16,6 +16,8 @@ pub unsafe extern "efiapi" fn main(_image_handle: Handle, system_table: SystemTa
     con_out.output_string(w!("Found firmware vendor: "));
     con_out.output_string(firmware_vendor);
 
+    let boot_services = system_table.boot_services();
+
     boot()
 }
 

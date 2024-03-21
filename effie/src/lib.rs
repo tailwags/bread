@@ -1,4 +1,6 @@
 #![no_std]
+#![feature(extended_varargs_abi_support)]
+
 
 use core::ffi::c_void;
 
