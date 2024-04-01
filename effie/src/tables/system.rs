@@ -1,4 +1,4 @@
-use core::ffi::c_void;
+use core::{ffi::c_void, ptr::NonNull};
 
 use crate::{
     protocols::{SimpleTextInput, SimpleTextOutput},
@@ -35,29 +35,40 @@ struct ConfigurationTable {
     vendor_table: *mut c_void,
 }
 
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct SystemTable {
-    inner: *mut SystemTableRaw,
+    inner: NonNull<SystemTableRaw>,
 }
 
 impl SystemTable {
+    pub(crate) const unsafe fn as_raw(&self) -> *mut SystemTableRaw {
+        self.inner.as_ptr()
+    }
+
+    pub(crate) const unsafe fn from_raw(raw: *mut SystemTableRaw) -> Self {
+        Self {
+            inner: NonNull::new_unchecked(raw),
+        }
+    }
+
     pub fn firmware_vendor(&self) -> &[u16] {
-        unsafe { u16_slice_from_ptr((*self.inner).firmware_vendor) }
+        unsafe { u16_slice_from_ptr((*self.as_raw()).firmware_vendor) }
     }
 
     pub fn con_in(&self) -> &SimpleTextInput {
-        unsafe { &(*self.inner).con_in }
+        unsafe { &(*self.as_raw()).con_in }
     }
 
     pub fn con_out(&self) -> &SimpleTextOutput {
-        unsafe { &(*self.inner).con_out }
+        unsafe { &(*self.as_raw()).con_out }
     }
 
     pub fn boot_services(&self) -> &BootServices {
-        unsafe { &(*self.inner).boot_services }
+        unsafe { &(*self.as_raw()).boot_services }
     }
 
     pub fn runtime_services(&self) -> &RuntimeServices {
-        unsafe { &(*self.inner).runtime_services }
+        unsafe { &(*self.as_raw()).runtime_services }
     }
 }

@@ -1,11 +1,11 @@
-use core::ffi::c_void;
+use core::{ffi::c_void, ptr::NonNull, sync::atomic::AtomicPtr};
 
 use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Status};
 
 // FIXME: use wrapper structs for ty
 // FIXME: Make sure the pointers have the correct mutability
 #[repr(C)]
-struct BootServicesRaw {
+pub(crate) struct BootServicesRaw {
     hdr: TableHeader,
     raise_tpl: unsafe extern "efiapi" fn(new_tpl: Tpl) -> Tpl,
     restore_tpl: unsafe extern "efiapi" fn(old_tpl: Tpl),
@@ -243,7 +243,20 @@ pub struct OpenProtocolInformationEntry {
     pub open_count: u32,
 }
 
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct BootServices {
-    inner: *mut BootServicesRaw,
+    inner: NonNull<BootServicesRaw>,
+}
+
+impl BootServices {
+    pub(crate) const unsafe fn as_raw(&self) -> *mut BootServicesRaw {
+        self.inner.as_ptr()
+    }
+
+    pub(crate) const unsafe fn from_raw(raw: *mut BootServicesRaw) -> Self {
+        Self {
+            inner: NonNull::new_unchecked(raw),
+        }
+    }
 }

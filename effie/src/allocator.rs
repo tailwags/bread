@@ -1,13 +1,13 @@
 use core::{
     alloc::GlobalAlloc,
-    ptr::{null_mut, NonNull},
+    ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
 };
 
-use crate::tables::BootServices;
+use crate::tables::{BootServices, BootServicesRaw};
 
 pub struct Allocator {
-    boot_services: AtomicPtr<BootServices>,
+    boot_services: AtomicPtr<BootServicesRaw>,
 }
 
 unsafe impl GlobalAlloc for Allocator {
@@ -27,8 +27,8 @@ impl Allocator {
         }
     }
 
-    pub unsafe fn init(&self, boot_services: NonNull<BootServices>) {
+    pub unsafe fn init(&mut self, boot_services: &BootServices) {
         self.boot_services
-            .store(boot_services.as_ptr(), Ordering::Relaxed)
+            .store(boot_services.as_raw(), Ordering::Relaxed);
     }
 }
