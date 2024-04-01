@@ -1,15 +1,16 @@
 #![no_std]
 #![feature(extended_varargs_abi_support)]
 
-
 use core::ffi::c_void;
 
+mod allocator;
 mod protocol;
 mod status;
 
 pub mod protocols;
 pub mod tables;
 
+pub use allocator::Allocator;
 pub use protocol::Protocol;
 pub use status::Status;
 pub use uguid::Guid;

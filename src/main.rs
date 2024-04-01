@@ -1,7 +1,12 @@
 #![no_main]
 #![no_std]
 
-use effie::{tables::SystemTable, w, Handle};
+extern crate alloc;
+
+use effie::{tables::SystemTable, w, Allocator, Handle};
+
+#[global_allocator]
+static ALLOCATOR: Allocator = unsafe { Allocator::new() };
 
 // KERNEL_PATH=boot:///efi/boot/vmlinuz
 // MODULE_PATH=boot:///efi/boot/initrd.gz
