@@ -36,7 +36,7 @@ dependencies = [
 [[package]]
 name = "linux-raw-sys"
 version = "0.6.4"
-source = "git+https://github.com/morr0ne/linux-raw-sys.git?branch=bootparam#d9985e14993d58f5beb1afa5bf40bc8a7c1e14d3"
+source = "git+https://github.com/sunfishcode/linux-raw-sys.git#9c7edc436d799ccd07569b83403945500a11e889"
 
 [[package]]
 name = "proc-macro2"

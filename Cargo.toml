@@ -13,7 +13,7 @@ publish = false
 
 [dependencies]
 effie = { version = "0.1.0", path = "effie" }
-linux-raw-sys = { git = "https://github.com/morr0ne/linux-raw-sys.git", branch = "bootparam", version = "0.6.4", default-features = false, features = [
+linux-raw-sys = { git = "https://github.com/sunfishcode/linux-raw-sys.git", version = "0.6.4", default-features = false, features = [
     "no_std",
     "bootparam",
 ] }
