@@ -1,4 +1,8 @@
-use core::{ffi::c_void, ptr::NonNull, sync::atomic::AtomicPtr};
+use core::{
+    ffi::c_void,
+    ptr::{null_mut, NonNull},
+    sync::atomic::AtomicPtr,
+};
 
 use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Status};
 
@@ -199,6 +203,26 @@ impl Tpl {
 #[repr(transparent)]
 pub struct MemoryType(u32);
 
+impl MemoryType {
+    pub const RESERVED_MEMORY_TYPE: Self = Self(0);
+    pub const LOADER_CODE: Self = Self(1);
+    pub const LOADER_DATA: Self = Self(2);
+    pub const BOOT_SERVICES_CODE: Self = Self(3);
+    pub const BOOT_SERVICES_DATA: Self = Self(4);
+    pub const RUNTIME_SERVICES_CODE: Self = Self(5);
+    pub const RUNTIME_SERVICES_DATA: Self = Self(6);
+    pub const CONVENTIONAL_MEMORY: Self = Self(7);
+    pub const UNUSABLE_MEMORY: Self = Self(8);
+    pub const ACPIRECLAIM_MEMORY: Self = Self(9);
+    pub const ACPIMEMORY_NVS: Self = Self(10);
+    pub const MEMORY_MAPPED_IO: Self = Self(11);
+    pub const MEMORY_MAPPED_IOPORT_SPACE: Self = Self(12);
+    pub const PAL_CODE: Self = Self(13);
+    pub const PERSISTENT_MEMORY: Self = Self(14);
+    pub const UNACCEPTED_MEMORY_TYPE: Self = Self(15);
+    pub const MAX_MEMORY_TYPE: Self = Self(16);
+}
+
 #[repr(transparent)]
 pub struct PhysicalAddress(u64);
 pub struct VirtualAddress(u64);
@@ -258,5 +282,20 @@ impl BootServices {
         Self {
             inner: NonNull::new_unchecked(raw),
         }
+    }
+
+    // FIXME: check for errors
+    pub fn allocate_pool(
+        &self,
+        memory_type: MemoryType,
+        size: usize,
+    ) -> Result<*mut c_void, Status> {
+        let mut buffer = null_mut();
+        let status = unsafe { ((*self.as_raw()).allocate_pool)(memory_type, size, &mut buffer) };
+        Ok(buffer)
+    }
+
+    pub fn free_pool(&self, buffer: *mut c_void) -> Status {
+        unsafe { ((*self.as_raw()).free_pool)(buffer) }
     }
 }
