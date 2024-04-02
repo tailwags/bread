@@ -19,7 +19,8 @@ unsafe impl GlobalAlloc for Allocator {
         let align = layout.align();
 
         if align > 8 {
-            todo!() // FIXME: deal with pointer with bigger alignment
+            // todo!() // FIXME: deal with pointer with bigger alignment
+            null_mut()
         } else {
             if let Ok(ptr) = boot_services.allocate_pool(MemoryType::LOADER_DATA, size) {
                 ptr.cast()
@@ -35,7 +36,7 @@ unsafe impl GlobalAlloc for Allocator {
         let align = layout.align();
 
         if align > 8 {
-            todo!() // FIXME: deal with pointer with bigger alignment
+            // todo!() // FIXME: deal with pointer with bigger alignment
         }
 
         boot_services.free_pool(ptr.cast());
