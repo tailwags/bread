@@ -14,7 +14,7 @@ pub(crate) struct BootServicesRaw {
     raise_tpl: unsafe extern "efiapi" fn(new_tpl: Tpl) -> Tpl,
     restore_tpl: unsafe extern "efiapi" fn(old_tpl: Tpl),
     allocate_pages: unsafe extern "efiapi" fn(
-        ty: u32,
+        allocate_type: AllocateType,
         memory_type: MemoryType,
         pages: usize,
         memory: *mut PhysicalAddress,
@@ -224,6 +224,16 @@ impl MemoryType {
 }
 
 #[repr(transparent)]
+pub struct AllocateType(u32);
+
+impl AllocateType {
+    const ALLOCATE_ANY_PAGES: Self = Self(0);
+    const ALLOCATE_MAX_ADDRESS: Self = Self(1);
+    const ALLOCATE_ADDRESS: Self = Self(2);
+    const MAX_ALLOCATE_TYPE: Self = Self(3);
+}
+
+#[repr(transparent)]
 pub struct PhysicalAddress(u64);
 pub struct VirtualAddress(u64);
 
@@ -297,5 +307,23 @@ impl BootServices {
 
     pub fn free_pool(&self, buffer: *mut c_void) -> Status {
         unsafe { ((*self.as_raw()).free_pool)(buffer) }
+    }
+
+    pub fn allocate_pages_at_address(
+        &self,
+        memory_type: MemoryType,
+        pages: usize,
+        address: PhysicalAddress,
+    ) -> Status {
+        let mut memory = address;
+
+        unsafe {
+            ((*self.as_raw()).allocate_pages)(
+                AllocateType::ALLOCATE_ADDRESS,
+                memory_type,
+                pages,
+                &mut memory,
+            )
+        }
     }
 }
