@@ -6,6 +6,8 @@ use crate::{
     u16_slice_from_ptr, Guid, Handle,
 };
 
+use super::SpecificationRevision;
+
 /// Contains pointers to the runtime and boot services tables.
 #[repr(C)]
 struct SystemTableRaw {
@@ -50,6 +52,10 @@ impl SystemTable {
         Self {
             inner: NonNull::new_unchecked(raw),
         }
+    }
+
+    pub fn revision(&self) -> SpecificationRevision {
+        unsafe { (*self.as_raw()).hdr.revision }
     }
 
     pub fn firmware_vendor(&self) -> &[u16] {

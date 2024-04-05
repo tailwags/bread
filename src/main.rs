@@ -22,8 +22,10 @@ pub extern "efiapi" fn main(_image_handle: Handle, system_table: SystemTable) ->
     let con_out = system_table.con_out();
 
     con_out.clear_screen();
-    con_out.output_string(w!("Found firmware vendor: "));
+    con_out.output_string(w!("Firmware vendor: "));
     con_out.output_string(firmware_vendor);
+    con_out.output_string(w!("\r\nUEFI version: "));
+    con_out.output_string(system_table.revision().as_str());
 
     unsafe { boot() }
 }
