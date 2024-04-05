@@ -3,7 +3,10 @@
 
 extern crate alloc;
 
-use effie::{tables::SystemTable, w, Allocator, Handle};
+use effie::{
+    tables::{MemoryType, SystemTable},
+    w, Allocator, Handle, Result, Status,
+};
 
 #[global_allocator]
 static mut ALLOCATOR: Allocator = unsafe { Allocator::new() };
@@ -12,25 +15,43 @@ static mut ALLOCATOR: Allocator = unsafe { Allocator::new() };
 // MODULE_PATH=boot:///efi/boot/initrd.gz
 // CMDLINE=loglevel=3
 
-#[export_name = "efi_main"]
-pub extern "efiapi" fn main(_image_handle: Handle, system_table: SystemTable) -> ! {
-    let boot_services = system_table.boot_services();
+#[no_mangle]
+pub extern "efiapi" fn efi_main(image_handle: Handle, system_table: SystemTable) -> Status {
+    unsafe { ALLOCATOR.init(system_table.boot_services()) };
 
-    unsafe { ALLOCATOR.init(boot_services) };
+    match main(image_handle, system_table) {
+        Ok(_) => Status::SUCCESS,
+        Err(status) => status,
+    }
+}
 
+fn main(_image_handle: Handle, system_table: SystemTable) -> Result {
+    print_info(&system_table)?;
+
+    boot()
+}
+
+fn print_info(system_table: &SystemTable) -> Result {
     let firmware_vendor = system_table.firmware_vendor();
     let con_out = system_table.con_out();
 
-    con_out.clear_screen();
-    con_out.output_string(w!("Firmware vendor: "));
-    con_out.output_string(firmware_vendor);
-    con_out.output_string(w!("\r\nUEFI version: "));
-    con_out.output_string(system_table.revision().as_str());
+    con_out.clear_screen()?;
+    con_out.output_string(w!("Firmware vendor: "))?;
+    con_out.output_string(firmware_vendor)?;
+    con_out.output_string(w!("\r\nUEFI version: "))?;
+    con_out.output_string(system_table.revision().as_str())?;
 
-    unsafe { boot() }
+    Ok(())
 }
 
-pub unsafe fn boot() -> ! {
+fn _load_kernel(system_table: &SystemTable) -> Result {
+    let boot_services = system_table.boot_services();
+    boot_services.allocate_pages_at_address(MemoryType::LOADER_DATA, 1, 0x800000.into())?;
+
+    Ok(())
+}
+
+fn boot() -> ! {
     loop {}
 }
 

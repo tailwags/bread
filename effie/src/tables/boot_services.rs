@@ -4,7 +4,7 @@ use core::{
     sync::atomic::AtomicPtr,
 };
 
-use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Status};
+use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Result, Status};
 
 // FIXME: use wrapper structs for ty
 // FIXME: Make sure the pointers have the correct mutability
@@ -235,6 +235,13 @@ impl AllocateType {
 
 #[repr(transparent)]
 pub struct PhysicalAddress(u64);
+
+impl From<u64> for PhysicalAddress {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
 pub struct VirtualAddress(u64);
 
 struct MemoryDescriptor {
@@ -295,18 +302,14 @@ impl BootServices {
     }
 
     // FIXME: check for errors
-    pub fn allocate_pool(
-        &self,
-        memory_type: MemoryType,
-        size: usize,
-    ) -> Result<*mut c_void, Status> {
+    pub fn allocate_pool(&self, memory_type: MemoryType, size: usize) -> Result<*mut c_void> {
         let mut buffer = null_mut();
-        let status = unsafe { ((*self.as_raw()).allocate_pool)(memory_type, size, &mut buffer) };
-        Ok(buffer)
+        unsafe { ((*self.as_raw()).allocate_pool)(memory_type, size, &mut buffer) }
+            .as_result_with(buffer)
     }
 
-    pub fn free_pool(&self, buffer: *mut c_void) -> Status {
-        unsafe { ((*self.as_raw()).free_pool)(buffer) }
+    pub fn free_pool(&self, buffer: *mut c_void) -> Result {
+        unsafe { ((*self.as_raw()).free_pool)(buffer) }.as_result()
     }
 
     pub fn allocate_pages_at_address(
@@ -314,7 +317,7 @@ impl BootServices {
         memory_type: MemoryType,
         pages: usize,
         address: PhysicalAddress,
-    ) -> Status {
+    ) -> Result {
         let mut memory = address;
 
         unsafe {
@@ -325,5 +328,6 @@ impl BootServices {
                 &mut memory,
             )
         }
+        .as_result()
     }
 }

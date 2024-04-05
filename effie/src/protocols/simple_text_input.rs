@@ -1,4 +1,4 @@
-use crate::{Event, Guid, Protocol, Status};
+use crate::{Event, Guid, Protocol, Result, Status};
 
 #[repr(C)]
 struct SimpleTextInputRaw {
@@ -30,7 +30,7 @@ impl Protocol for SimpleTextInput {
 }
 
 impl SimpleTextInput {
-    pub fn reset(&self, extended_verification: bool) -> Status {
-        unsafe { ((*self.inner).reset)(self.inner, extended_verification) }
+    pub fn reset(&self, extended_verification: bool) -> Result {
+        unsafe { ((*self.inner).reset)(self.inner, extended_verification) }.as_result()
     }
 }

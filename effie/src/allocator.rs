@@ -39,7 +39,8 @@ unsafe impl GlobalAlloc for Allocator {
             // todo!() // FIXME: deal with pointer with bigger alignment
         }
 
-        boot_services.free_pool(ptr.cast());
+        // FIXME: can we deal with errors?
+        let _ = boot_services.free_pool(ptr.cast());
     }
 }
 

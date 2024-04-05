@@ -10,7 +10,7 @@ use super::SpecificationRevision;
 
 /// Contains pointers to the runtime and boot services tables.
 #[repr(C)]
-struct SystemTableRaw {
+pub(crate) struct SystemTableRaw {
     /// TODO
     hdr: TableHeader,
     /// A pointer to a null terminated string that identifies the vendor that produces the system firmware for the platform

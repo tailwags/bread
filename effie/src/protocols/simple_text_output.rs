@@ -1,4 +1,4 @@
-use crate::{Guid, Protocol, Status};
+use crate::{Guid, Protocol, Result, Status};
 
 #[repr(C)]
 struct SimpleTextOutputRaw {
@@ -47,11 +47,11 @@ impl Protocol for SimpleTextOutput {
 }
 
 impl SimpleTextOutput {
-    pub fn output_string(&self, string: &[u16]) -> Status {
-        unsafe { ((*self.inner).output_string)(self.inner, string.as_ptr()) }
+    pub fn output_string(&self, string: &[u16]) -> Result {
+        unsafe { ((*self.inner).output_string)(self.inner, string.as_ptr()) }.as_result()
     }
 
-    pub fn clear_screen(&self) -> Status {
-        unsafe { ((*self.inner).clear_screen)(self.inner) }
+    pub fn clear_screen(&self) -> Result {
+        unsafe { ((*self.inner).clear_screen)(self.inner) }.as_result()
     }
 }

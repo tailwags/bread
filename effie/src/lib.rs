@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(extended_varargs_abi_support)]
+#![allow(unused)]
 
 use core::ffi::c_void;
 
@@ -12,7 +13,7 @@ pub mod tables;
 
 pub use allocator::Allocator;
 pub use protocol::Protocol;
-pub use status::Status;
+pub use status::{Result, Status};
 pub use uguid::Guid;
 
 pub use effie_macros::w;
