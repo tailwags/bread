@@ -2,7 +2,7 @@
 #![feature(extended_varargs_abi_support)]
 #![allow(unused)]
 
-use core::ffi::c_void;
+use core::{ffi::c_void, ptr::null_mut};
 
 mod allocator;
 mod protocol;
@@ -18,10 +18,20 @@ pub use uguid::Guid;
 
 pub use effie_macros::w;
 
-// pub type Handle = *mut c_void;
-// pub type Event = *mut c_void;
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Handle(*mut c_void);
+
+impl Handle {
+    pub const unsafe fn from_raw(raw: *mut c_void) -> Self {
+        Self(raw)
+    }
+
+    pub const fn null() -> Self {
+        Handle(null_mut())
+    }
+}
+
 #[repr(transparent)]
 pub struct Event(*mut c_void);
 

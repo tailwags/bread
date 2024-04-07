@@ -1,10 +1,11 @@
 use core::{
     ffi::c_void,
+    mem::MaybeUninit,
     ptr::{null_mut, NonNull},
     sync::atomic::AtomicPtr,
 };
 
-use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Result, Status};
+use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Protocol, Result, Status};
 
 // FIXME: use wrapper structs for ty
 // FIXME: Make sure the pointers have the correct mutability
@@ -134,27 +135,27 @@ pub(crate) struct BootServicesRaw {
         child_handle: Handle,
     ) -> Status,
     open_protocol: unsafe extern "efiapi" fn(
-        efi_handle: Handle,
-        protocol: *mut Guid,
+        handle: Handle,
+        protocol: *const Guid,
         interface: *mut *mut c_void,
         agent_handle: Handle,
         controller_handle: Handle,
         attributes: OpenProtocolAttributes,
     ) -> Status,
     close_protocol: unsafe extern "efiapi" fn(
-        efi_handle: Handle,
+        handle: Handle,
         protocol: *mut Guid,
         agent_handle: Handle,
         controller_handle: Handle,
     ) -> Status,
     open_protocol_information: unsafe extern "efiapi" fn(
-        efi_handle: Handle,
+        handle: Handle,
         protocol: *mut Guid,
         entry_buffer: *mut *mut OpenProtocolInformationEntry,
         entry_count: *mut usize,
     ) -> Status,
     protocols_per_handle: unsafe extern "efiapi" fn(
-        efi_handle: Handle,
+        handle: Handle,
         protocol_buffer: *mut *mut *mut Guid,
         protocol_buffer_count: *mut usize,
     ) -> Status,
@@ -171,9 +172,9 @@ pub(crate) struct BootServicesRaw {
         interface: *mut *mut c_void,
     ) -> Status,
     install_multiple_protocol_interfaces:
-        unsafe extern "efiapi" fn(efi_handle: *mut Handle, ...) -> Status,
+        unsafe extern "efiapi" fn(handle: *mut Handle, ...) -> Status,
     uninstall_multiple_protocol_interfaces:
-        unsafe extern "efiapi" fn(efi_handle: Handle, ...) -> Status,
+        unsafe extern "efiapi" fn(handle: Handle, ...) -> Status,
     calculate_crc32:
         unsafe extern "efiapi" fn(data: *mut c_void, data_size: usize, crc32: *mut u32) -> Status,
     copy_mem:
@@ -329,5 +330,24 @@ impl BootServices {
             )
         }
         .as_result()
+    }
+
+    pub fn open_protocol<P: Protocol>(&self, handle: &Handle, agent: &Handle) -> Result<P> {
+        let mut protocol = MaybeUninit::<P>::uninit();
+        let status = unsafe {
+            ((*self.as_raw()).open_protocol)(
+                *handle,
+                &P::GUID,
+                protocol.as_mut_ptr().cast(),
+                *agent,
+                Handle::null(),
+                OpenProtocolAttributes::BY_HANDLE_PROTOCOL,
+            )
+        };
+
+        match status {
+            Status::SUCCESS => Ok(unsafe { protocol.assume_init() }),
+            _ => Err(status),
+        }
     }
 }
