@@ -17,6 +17,7 @@ itoa = "1.0.11"
 linux-raw-sys = { git = "https://github.com/morr0ne/linux-raw-sys.git", branch = "feature/arm-image-header", version = "0.6.4", default-features = false, features = [
     "no_std",
     "bootparam",
+    "image",
 ] }
 
 [profile.release]
