@@ -1,2 +1,5 @@
 [unstable]
 build-std = ["core", "alloc"]
+
+[build]
+target = ["aarch64-unknown-uefi", "x86_64-unknown-uefi"]
