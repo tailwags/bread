@@ -43,7 +43,7 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 [[package]]
 name = "linux-raw-sys"
 version = "0.6.4"
-source = "git+https://github.com/sunfishcode/linux-raw-sys.git#364c767b47db561c5951ca81efe223849ceeca48"
+source = "git+https://github.com/morr0ne/linux-raw-sys.git?branch=feature/arm-image-header#28008967857a1f36a3171d064b318fe25dfc744b"
 
 [[package]]
 name = "proc-macro2"
@@ -65,9 +65,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.62"
+version = "2.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f660c3bfcefb88c538776b6685a0c472e3128b51e74d48793dc2a488196e8eb"
+checksum = "bf5be731623ca1a1fb7d8be6f261a3be6d3e2337b8a1f97be944d020c8fcb704"
 dependencies = [
  "proc-macro2",
  "quote",
