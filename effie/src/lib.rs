@@ -27,7 +27,7 @@ static mut SYSTEM_TABLE: MaybeUninit<&SystemTable> = MaybeUninit::uninit();
 static mut IMAGE_HANDLE: MaybeUninit<Handle> = MaybeUninit::uninit();
 
 #[global_allocator]
-static mut ALLOCATOR: Allocator = unsafe { Allocator::new() };
+static mut ALLOCATOR: Allocator = Allocator;
 
 #[no_mangle]
 extern "efiapi" fn efi_main(image_handle: Handle, system_table: &'static SystemTable) -> Status {
@@ -37,8 +37,6 @@ extern "efiapi" fn efi_main(image_handle: Handle, system_table: &'static SystemT
 
     unsafe { SYSTEM_TABLE.write(system_table) };
     unsafe { IMAGE_HANDLE.write(image_handle) };
-
-    unsafe { ALLOCATOR.init(system_table.boot_services) };
 
     unsafe {
         if let Err(status) = main() {
