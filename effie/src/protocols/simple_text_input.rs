@@ -1,9 +1,9 @@
 use crate::{Event, Guid, Protocol, Result, Status};
 
 #[repr(C)]
-struct SimpleTextInputRaw {
-    reset: unsafe extern "efiapi" fn(this: *mut Self, extended_verification: bool) -> Status,
-    read_key_stroke: unsafe extern "efiapi" fn(this: *mut Self, key: *mut InputKey) -> Status,
+pub struct SimpleTextInput {
+    reset: unsafe extern "efiapi" fn(this: &Self, extended_verification: bool) -> Status,
+    read_key_stroke: unsafe extern "efiapi" fn(this: &Self, key: *mut InputKey) -> Status,
     wait_for_key: Event,
 }
 
@@ -11,11 +11,6 @@ struct SimpleTextInputRaw {
 pub struct InputKey {
     pub scan_code: u16,
     pub unicode_char: u16,
-}
-
-#[repr(transparent)]
-pub struct SimpleTextInput {
-    inner: *mut SimpleTextInputRaw,
 }
 
 impl Protocol for SimpleTextInput {
@@ -31,6 +26,6 @@ impl Protocol for SimpleTextInput {
 
 impl SimpleTextInput {
     pub fn reset(&self, extended_verification: bool) -> Result {
-        unsafe { ((*self.inner).reset)(self.inner, extended_verification) }.as_result()
+        unsafe { (self.reset)(self, extended_verification) }.as_result()
     }
 }

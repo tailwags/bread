@@ -3,14 +3,9 @@ use core::mem::MaybeUninit;
 use crate::{protocols::File, Guid, Protocol, Result, Status};
 
 #[repr(C)]
-struct SimpleFilesystemRaw {
-    revision: u64,
-    open_volume: unsafe extern "efiapi" fn(this: *mut Self, root: *mut File) -> Status,
-}
-
-#[repr(transparent)]
 pub struct SimpleFilesystem {
-    inner: *mut SimpleFilesystemRaw,
+    revision: u64,
+    open_volume: unsafe extern "efiapi" fn(this: &Self, root: *mut *mut File) -> Status,
 }
 
 impl Protocol for SimpleFilesystem {
@@ -25,12 +20,12 @@ impl Protocol for SimpleFilesystem {
 }
 
 impl SimpleFilesystem {
-    pub fn open_volume(&self) -> Result<File> {
-        let mut volume = MaybeUninit::<File>::uninit();
-        let status = unsafe { ((*self.inner).open_volume)(self.inner, volume.as_mut_ptr()) };
+    pub fn open_volume(&self) -> Result<&File> {
+        let mut volume = MaybeUninit::<*mut File>::uninit();
+        let status = unsafe { (self.open_volume)(self, volume.as_mut_ptr()) };
 
         match status {
-            Status::SUCCESS => Ok(unsafe { volume.assume_init() }),
+            Status::SUCCESS => Ok(unsafe { &*volume.assume_init() }),
             _ => Err(status),
         }
     }

@@ -70,6 +70,18 @@ impl Status {
         }
     }
 
+    pub fn is_success(self) -> bool {
+        matches!(self, Self::SUCCESS)
+    }
+
+    pub fn is_error(self) -> bool {
+        todo!()
+    }
+
+    pub fn is_warning(self) -> bool {
+        todo!()
+    }
+
     pub const fn description(&self) -> &[u16] {
         match *self {
             Self::SUCCESS => w!("The operation completed successfully."),
@@ -109,7 +121,7 @@ impl Status {
             Self::WARN_UNKNOWN_GLYPH => w!("The string contained one or more characters that the device could not render and were skipped."),
             Self::WARN_DELETE_FAILURE => w!("The handle was closed, but the file was not deleted."),
             Self::WARN_WRITE_FAILURE => w!("The handle was closed, but the data to the file was not flushed properly."),
-            Self::BUFFER_TOO_SMALL => w!("The resulting buffer was too small, and the data was truncated to the buffer size."),
+            // Self::BUFFER_TOO_SMALL => w!("The resulting buffer was too small, and the data was truncated to the buffer size."),
             Self::WARN_STALE_DATA => w!("The data has not been updated within the timeframe set by local policy for this type of data."),
             Self::WARN_FILE_SYSTEM => w!("The resulting buffer contains UEFI-compliant file system."),
             Self::WARN_RESET_REQUIRED => w!("The operation will be processed across a system reset."),

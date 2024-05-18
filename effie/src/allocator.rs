@@ -4,11 +4,11 @@ use core::{
     sync::atomic::{AtomicPtr, Ordering},
 };
 
-use crate::tables::{BootServices, BootServicesRaw, MemoryType};
+use crate::tables::{BootServices, MemoryType};
 
 #[repr(transparent)]
 pub struct Allocator {
-    inner: AtomicPtr<BootServicesRaw>,
+    inner: AtomicPtr<BootServices>,
 }
 
 unsafe impl GlobalAlloc for Allocator {
@@ -51,11 +51,11 @@ impl Allocator {
         }
     }
 
-    pub unsafe fn init(&mut self, boot_services: &BootServices) {
-        self.inner.store(boot_services.as_raw(), Ordering::Relaxed);
+    pub unsafe fn init(&mut self, boot_services: *const BootServices) {
+        self.inner.store(boot_services.cast_mut(), Ordering::Relaxed);
     }
 
-    fn boot_services(&self) -> BootServices {
-        unsafe { BootServices::from_raw(self.inner.load(Ordering::Acquire)) }
+    fn boot_services(&self) -> &BootServices {
+        unsafe { &*self.inner.load(Ordering::Acquire) }
     }
 }

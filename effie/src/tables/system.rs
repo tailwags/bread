@@ -1,16 +1,17 @@
-use core::{ffi::c_void, ptr::NonNull};
+use core::ffi::c_void;
 
 use crate::{
     protocols::{SimpleTextInput, SimpleTextOutput},
     tables::{BootServices, RuntimeServices, TableHeader},
-    u16_slice_from_ptr, Guid, Handle,
+    util::u16_slice_from_ptr,
+    Guid, Handle,
 };
 
-use super::SpecificationRevision;
+use super::{Signature, SpecificationRevision};
 
 /// Contains pointers to the runtime and boot services tables.
 #[repr(C)]
-pub(crate) struct SystemTableRaw {
+pub struct SystemTable {
     /// TODO
     hdr: TableHeader,
     /// A pointer to a null terminated string that identifies the vendor that produces the system firmware for the platform
@@ -20,13 +21,13 @@ pub(crate) struct SystemTableRaw {
     /// The handle for the active console input device.
     console_in_handle: Handle,
     /// A pointer to the EFI_SIMPLE_TEXT_INPUT_PROTOCOL interface that is associated with ConsoleInHandle.
-    con_in: SimpleTextInput,
+    con_in: *const SimpleTextInput,
     console_out_handle: Handle,
-    con_out: SimpleTextOutput,
+    con_out: *const SimpleTextOutput,
     standard_error_handler: Handle,
-    std_err: SimpleTextOutput,
-    runtime_services: RuntimeServices,
-    boot_services: BootServices,
+    std_err: *const SimpleTextOutput,
+    runtime_services: *const RuntimeServices,
+    pub(crate) boot_services: *const BootServices,
     number_of_table_entries: usize,
     configuration_table: ConfigurationTable,
 }
@@ -37,44 +38,32 @@ struct ConfigurationTable {
     vendor_table: *mut c_void,
 }
 
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub struct SystemTable {
-    inner: NonNull<SystemTableRaw>,
-}
-
 impl SystemTable {
-    pub(crate) const unsafe fn as_raw(&self) -> *mut SystemTableRaw {
-        self.inner.as_ptr()
-    }
-
-    pub(crate) const unsafe fn from_raw(raw: *mut SystemTableRaw) -> Self {
-        Self {
-            inner: NonNull::new_unchecked(raw),
-        }
+    pub fn signature(&self) -> Signature {
+        self.hdr.signature
     }
 
     pub fn revision(&self) -> SpecificationRevision {
-        unsafe { (*self.as_raw()).hdr.revision }
+        self.hdr.revision
     }
 
     pub fn firmware_vendor(&self) -> &[u16] {
-        unsafe { u16_slice_from_ptr((*self.as_raw()).firmware_vendor) }
+        unsafe { u16_slice_from_ptr(self.firmware_vendor) }
     }
 
     pub fn con_in(&self) -> &SimpleTextInput {
-        unsafe { &(*self.as_raw()).con_in }
+        unsafe { &*self.con_in }
     }
 
     pub fn con_out(&self) -> &SimpleTextOutput {
-        unsafe { &(*self.as_raw()).con_out }
+        unsafe { &*self.con_out }
     }
 
     pub fn boot_services(&self) -> &BootServices {
-        unsafe { &(*self.as_raw()).boot_services }
+        unsafe { &*self.boot_services }
     }
 
     pub fn runtime_services(&self) -> &RuntimeServices {
-        unsafe { &(*self.as_raw()).runtime_services }
+        unsafe { &*self.runtime_services }
     }
 }

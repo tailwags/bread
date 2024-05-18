@@ -12,7 +12,7 @@ use effie_macros::w;
 /// the EFI System Table, the EFI Boot Services Table, and the EFI Runtime Services Table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct Signature(u64);
+pub struct Signature(pub u64);
 
 impl Signature {
     pub const SYSTEM_TABLE: Self = Self(0x5453595320494249);

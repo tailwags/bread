@@ -1,12 +1,13 @@
 #![no_std]
 #![feature(extended_varargs_abi_support)]
-#![allow(unused)]
 
-use core::{ffi::c_void, ptr::null_mut};
+use core::mem::MaybeUninit;
 
 mod allocator;
 mod protocol;
 mod status;
+mod types;
+mod util;
 
 pub mod protocols;
 pub mod tables;
@@ -14,31 +15,45 @@ pub mod tables;
 pub use allocator::Allocator;
 pub use protocol::Protocol;
 pub use status::{Result, Status};
+pub use types::*;
+
 pub use uguid::Guid;
 
 pub use effie_macros::w;
 
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub struct Handle(*mut c_void);
+use tables::SystemTable;
 
-impl Handle {
-    pub const unsafe fn from_raw(raw: *mut c_void) -> Self {
-        Self(raw)
+static mut SYSTEM_TABLE: MaybeUninit<&SystemTable> = MaybeUninit::uninit();
+static mut IMAGE_HANDLE: MaybeUninit<Handle> = MaybeUninit::uninit();
+
+#[global_allocator]
+static mut ALLOCATOR: Allocator = unsafe { Allocator::new() };
+
+#[no_mangle]
+extern "efiapi" fn efi_main(image_handle: Handle, system_table: &'static SystemTable) -> Status {
+    extern "Rust" {
+        fn main() -> Result;
     }
 
-    pub const fn null() -> Self {
-        Handle(null_mut())
+    unsafe { SYSTEM_TABLE.write(system_table) };
+    unsafe { IMAGE_HANDLE.write(image_handle) };
+
+    unsafe { ALLOCATOR.init(system_table.boot_services) };
+
+    unsafe {
+        if let Err(status) = main() {
+            let _ = system_table.con_out().output_line(status.description());
+            status
+        } else {
+            Status::SUCCESS
+        }
     }
 }
 
-#[repr(transparent)]
-pub struct Event(*mut c_void);
+pub fn system_table() -> &'static SystemTable {
+    unsafe { SYSTEM_TABLE.assume_init() }
+}
 
-pub(crate) unsafe fn u16_slice_from_ptr<'p>(ptr: *const u16) -> &'p [u16] {
-    let mut len = 0;
-    while *ptr.add(len) != 0u16 {
-        len += 1
-    }
-    core::slice::from_raw_parts(ptr, len + 1)
+pub fn image_handle() -> Handle {
+    unsafe { IMAGE_HANDLE.assume_init() }
 }

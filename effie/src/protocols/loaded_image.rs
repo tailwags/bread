@@ -7,12 +7,12 @@ use crate::{
 };
 
 #[repr(C)]
-struct LoadedImageRaw {
+pub struct LoadedImage {
     revision: u32,
     parent_handle: Handle,
-    system_table: SystemTable,
+    system_table: *const SystemTable,
     device_handle: Handle,
-    file_path: DevicePath,
+    file_path: *const DevicePath,
     reserved: *mut c_void,
     load_option_size: u32,
     load_options: *mut c_void,
@@ -21,11 +21,6 @@ struct LoadedImageRaw {
     image_code_type: MemoryType,
     image_data_type: MemoryType,
     unload: unsafe extern "efiapi" fn(image_handle: Handle) -> Status,
-}
-
-#[repr(transparent)]
-pub struct LoadedImage {
-    inner: *mut LoadedImageRaw,
 }
 
 impl Protocol for LoadedImage {
@@ -41,6 +36,6 @@ impl Protocol for LoadedImage {
 
 impl LoadedImage {
     pub fn device(&self) -> &Handle {
-        unsafe { &(*self.inner).device_handle }
+        &self.device_handle
     }
 }

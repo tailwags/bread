@@ -1,16 +1,17 @@
 use core::{
     ffi::c_void,
     mem::MaybeUninit,
-    ptr::{null_mut, NonNull},
-    sync::atomic::AtomicPtr,
+    ptr::{null, null_mut},
 };
 
 use crate::{protocols::DevicePath, tables::TableHeader, Guid, Handle, Protocol, Result, Status};
 
+use super::Signature;
+
 // FIXME: use wrapper structs for ty
 // FIXME: Make sure the pointers have the correct mutability
 #[repr(C)]
-pub(crate) struct BootServicesRaw {
+pub struct BootServices {
     hdr: TableHeader,
     raise_tpl: unsafe extern "efiapi" fn(new_tpl: Tpl) -> Tpl,
     restore_tpl: unsafe extern "efiapi" fn(old_tpl: Tpl),
@@ -97,7 +98,7 @@ pub(crate) struct BootServicesRaw {
     load_image: unsafe extern "efiapi" fn(
         boot_policy: bool,
         parent_image_handle: Handle,
-        device_path: DevicePath,
+        device_path: *const DevicePath,
         source_buffer: *mut c_void,
         source_size: usize,
         image_handle: *mut Handle,
@@ -126,7 +127,7 @@ pub(crate) struct BootServicesRaw {
     connect_controller: unsafe extern "efiapi" fn(
         controller_handle: Handle,
         driver_image_handle: *mut Handle,
-        remaining_device_path: DevicePath,
+        remaining_device_path: *const DevicePath,
         recursive: bool,
     ) -> Status,
     disconnect_controller: unsafe extern "efiapi" fn(
@@ -245,7 +246,7 @@ impl From<u64> for PhysicalAddress {
 
 pub struct VirtualAddress(u64);
 
-struct MemoryDescriptor {
+pub struct MemoryDescriptor {
     ty: u32,
     physical_start: PhysicalAddress,
     virtual_start: VirtualAddress,
@@ -285,32 +286,19 @@ pub struct OpenProtocolInformationEntry {
     pub open_count: u32,
 }
 
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub struct BootServices {
-    inner: NonNull<BootServicesRaw>,
-}
-
 impl BootServices {
-    pub(crate) const unsafe fn as_raw(&self) -> *mut BootServicesRaw {
-        self.inner.as_ptr()
-    }
-
-    pub(crate) const unsafe fn from_raw(raw: *mut BootServicesRaw) -> Self {
-        Self {
-            inner: NonNull::new_unchecked(raw),
-        }
+    pub fn signature(&self) -> Signature {
+        self.hdr.signature
     }
 
     // FIXME: check for errors
     pub fn allocate_pool(&self, memory_type: MemoryType, size: usize) -> Result<*mut c_void> {
         let mut buffer = null_mut();
-        unsafe { ((*self.as_raw()).allocate_pool)(memory_type, size, &mut buffer) }
-            .as_result_with(buffer)
+        unsafe { (self.allocate_pool)(memory_type, size, &mut buffer) }.as_result_with(buffer)
     }
 
     pub fn free_pool(&self, buffer: *mut c_void) -> Result {
-        unsafe { ((*self.as_raw()).free_pool)(buffer) }.as_result()
+        unsafe { (self.free_pool)(buffer) }.as_result()
     }
 
     pub fn allocate_pages_at_address(
@@ -322,7 +310,7 @@ impl BootServices {
         let mut memory = address;
 
         unsafe {
-            ((*self.as_raw()).allocate_pages)(
+            (self.allocate_pages)(
                 AllocateType::ALLOCATE_ADDRESS,
                 memory_type,
                 pages,
@@ -332,10 +320,10 @@ impl BootServices {
         .as_result()
     }
 
-    pub fn open_protocol<P: Protocol>(&self, handle: &Handle, agent: &Handle) -> Result<P> {
-        let mut protocol = MaybeUninit::<P>::uninit();
+    pub fn open_protocol<P: Protocol>(&self, handle: &Handle, agent: &Handle) -> Result<&P> {
+        let mut protocol = MaybeUninit::<*mut P>::uninit();
         let status = unsafe {
-            ((*self.as_raw()).open_protocol)(
+            (self.open_protocol)(
                 *handle,
                 &P::GUID,
                 protocol.as_mut_ptr().cast(),
@@ -345,9 +333,35 @@ impl BootServices {
             )
         };
 
-        match status {
-            Status::SUCCESS => Ok(unsafe { protocol.assume_init() }),
-            _ => Err(status),
-        }
+        status.as_result_with(unsafe { &*protocol.assume_init() })
+    }
+
+    // #[allow(unused)]
+    // pub fn load_image(
+    //     &self,
+    //     boot_policy: bool,
+    //     parent_image_handle: &Handle,
+    //     buf: &[u8],
+    // ) -> Result<Handle> {
+    //     let mut image_handle = Handle::null();
+
+    //     let device_path =
+    //         self.open_protocol::<DevicePath>(&parent_image_handle, &parent_image_handle)?;
+
+    //     unsafe {
+    //         (self.load_image)(
+    //             false,
+    //             *parent_image_handle,
+    //             device_path,
+    //             buf.as_ptr() as _,
+    //             buf.len(),
+    //             &mut image_handle,
+    //         )
+    //     }
+    //     .as_result_with(image_handle)
+    // }
+
+    pub fn start_image(&self, image_handle: Handle) -> Result {
+        unsafe { (self.start_image)(image_handle, null_mut(), null_mut()) }.as_result()
     }
 }

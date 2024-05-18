@@ -1,22 +1,24 @@
+use effie_macros::w;
+
 use crate::{Guid, Protocol, Result, Status};
 
 #[repr(C)]
-struct SimpleTextOutputRaw {
-    reset: unsafe extern "efiapi" fn(this: *mut Self, extended_verification: bool) -> Status,
-    output_string: unsafe extern "efiapi" fn(this: *mut Self, string: *const u16) -> Status,
-    test_string: unsafe extern "efiapi" fn(this: *mut Self, string: *const u16) -> Status,
+pub struct SimpleTextOutput {
+    reset: unsafe extern "efiapi" fn(this: &Self, extended_verification: bool) -> Status,
+    output_string: unsafe extern "efiapi" fn(this: &Self, string: *const u16) -> Status,
+    test_string: unsafe extern "efiapi" fn(this: &Self, string: *const u16) -> Status,
     query_mode: unsafe extern "efiapi" fn(
-        this: *mut Self,
+        this: &Self,
         mode_number: usize,
         columns: *mut usize,
         rows: *mut usize,
     ) -> Status,
-    set_mode: unsafe extern "efiapi" fn(this: *mut Self, mode_number: usize) -> Status,
-    set_attribute: unsafe extern "efiapi" fn(this: *mut Self, attribute: usize) -> Status,
-    clear_screen: unsafe extern "efiapi" fn(this: *mut Self) -> Status,
+    set_mode: unsafe extern "efiapi" fn(this: &Self, mode_number: usize) -> Status,
+    set_attribute: unsafe extern "efiapi" fn(this: &Self, attribute: usize) -> Status,
+    clear_screen: unsafe extern "efiapi" fn(this: &Self) -> Status,
     set_cursor_position:
-        unsafe extern "efiapi" fn(this: *mut Self, column: usize, row: usize) -> Status,
-    enable_cursor: unsafe extern "efiapi" fn(this: *mut Self, visible: bool) -> Status,
+        unsafe extern "efiapi" fn(this: &Self, column: usize, row: usize) -> Status,
+    enable_cursor: unsafe extern "efiapi" fn(this: &Self, visible: bool) -> Status,
     mode: *mut SimpleTextOutputMode,
 }
 
@@ -28,11 +30,6 @@ struct SimpleTextOutputMode {
     cursor_column: i32,
     cursor_row: i32,
     cursor_visible: bool,
-}
-
-#[repr(transparent)]
-pub struct SimpleTextOutput {
-    inner: *mut SimpleTextOutputRaw,
 }
 
 impl Protocol for SimpleTextOutput {
@@ -48,10 +45,15 @@ impl Protocol for SimpleTextOutput {
 
 impl SimpleTextOutput {
     pub fn output_string(&self, string: &[u16]) -> Result {
-        unsafe { ((*self.inner).output_string)(self.inner, string.as_ptr()) }.as_result()
+        unsafe { (self.output_string)(self, string.as_ptr()) }.as_result()
+    }
+
+    pub fn output_line(&self, string: &[u16]) -> Result {
+        self.output_string(string)?;
+        self.output_string(w!("\r\n"))
     }
 
     pub fn clear_screen(&self) -> Result {
-        unsafe { ((*self.inner).clear_screen)(self.inner) }.as_result()
+        unsafe { (self.clear_screen)(self) }.as_result()
     }
 }
