@@ -8,6 +8,7 @@ mod protocol;
 mod status;
 mod types;
 mod util;
+mod wstr;
 
 pub mod protocols;
 pub mod tables;
@@ -16,6 +17,7 @@ pub use allocator::Allocator;
 pub use protocol::Protocol;
 pub use status::{Result, Status};
 pub use types::*;
+pub use wstr::WStr;
 
 pub use uguid::Guid;
 
