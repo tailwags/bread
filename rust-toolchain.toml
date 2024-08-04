@@ -1,5 +1,3 @@
 [toolchain]
-channel = "nightly-2024-05-11"
-components = ["rust-src", "rustfmt", "llvm-tools"]
-profile = "minimal"
+channel = "nightly-2024-08-04"
 targets = ["aarch64-unknown-uefi", "x86_64-unknown-uefi"]
