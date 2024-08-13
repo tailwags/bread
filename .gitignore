@@ -3,3 +3,4 @@ temp
 tmp
 OVMF_VARS.fd
 esp
+bread.efi
