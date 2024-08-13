@@ -19,7 +19,9 @@ dependencies = [
 
 [[package]]
 name = "effie"
-version = "0.1.0"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fda632f8e654c738236f6d89a8831cc3238d6d7298bf65359c6c71b81ab2075b"
 dependencies = [
  "bitflags",
  "effie-macros",
@@ -29,7 +31,9 @@ dependencies = [
 
 [[package]]
 name = "effie-macros"
-version = "0.1.0"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52660c95ba58f307d4597f828d8f050ff7e494a0189d5c658c6d629f7c1978cc"
 dependencies = [
  "quote",
  "syn",
@@ -66,9 +70,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.72"
+version = "2.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc4b9b9bf2add8093d3f2c0204471e951b2285580335de42f9d2534f3ae7a8af"
+checksum = "1fceb41e3d546d0bd83421d3409b1460cc7444cd389341a4c880fe7a042cb3d7"
 dependencies = [
  "proc-macro2",
  "quote",
