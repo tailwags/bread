@@ -42,16 +42,6 @@ using the scripts located in the `scripts` folder.
 
 TODO
 
-## Effie
-
-To interact with the UEFI system, Bread uses a custom library called `effie`,
-which can be found in the corresponding folder. While effie might seem like a
-general-purpose UEFI library, its scope is much narrower and is tailored to the
-specific needs of this project. For this reason, most protocols are not
-implemented unless absolutely required. Nevertheless, this library can be used
-standalone to write UEFI programs. If you need a protocol to be implemented,
-feel free to open a PR.
-
 ## License
 
 This project is licensed under the
