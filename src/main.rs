@@ -51,7 +51,7 @@ fn print_info() -> Result {
 
 #[cfg(target_arch = "aarch64")]
 fn load_kernel() -> Result {
-    todo!()
+    Ok(())
 }
 
 #[cfg(target_arch = "x86_64")]
