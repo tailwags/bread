@@ -49,6 +49,12 @@ fn print_info() -> Result {
     Ok(())
 }
 
+#[cfg(target_arch = "aarch64")]
+fn load_kernel() -> Result {
+    todo!()
+}
+
+#[cfg(target_arch = "x86_64")]
 fn load_kernel() -> Result {
     let system_table = effie::system_table();
     let image_handle = effie::image_handle();
