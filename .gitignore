@@ -1,6 +1,6 @@
 /target
 temp
 tmp
-OVMF_VARS.fd
+OVMF_VARS.4m.fd
 esp
 bread.efi
