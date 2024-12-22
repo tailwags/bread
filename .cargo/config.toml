@@ -3,3 +3,4 @@ build-std = ["core", "alloc"]
 
 [build]
 target = ["aarch64-unknown-uefi", "x86_64-unknown-uefi"]
+rustflags = ["-Zlocation-detail=none"]
