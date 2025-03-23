@@ -23,4 +23,4 @@ codegen-units = 1
 strip = true
 
 [patch.crates-io]
-# effie = { path = "../effie" }
+effie = { path = "../effie" }

@@ -7,7 +7,7 @@ extern crate alloc;
 use effie::{
     protocols::{FileMode, LoadedImage, SimpleFilesystem},
     tables::{Signature, SystemTable},
-    w, Result,
+    w, Result, WStr,
 };
 
 use core::mem::size_of;
@@ -19,13 +19,13 @@ use linux_raw_sys::bootparam::setup_header as SetupHeader;
 // #[cfg(target_arch = "aarch64")]
 // use linux_raw_sys::image::arm64_image_header as ImageHeader;
 
-const KERNEL_PATH: &[u16] = w!("\\efi\\boot\\vmlinuz");
-const INITRAMFS_PATH: &[u16] = w!("\\efi\\boot\\initrd.gz");
+const KERNEL_PATH: &WStr = w!("\\efi\\boot\\vmlinuz");
+const INITRAMFS_PATH: &WStr = w!("\\efi\\boot\\initrd.gz");
 const CMDLINE: &str = "loglevel=3";
 
 // static mut SYSTEM_TABLE: MaybeUninit<&SystemTable> = MaybeUninit::uninit();
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn main() -> Result {
     print_info()?;
 
@@ -120,7 +120,9 @@ fn _print_num<I: Integer>(system_table: &SystemTable, i: I) -> Result {
 
 fn _print_utf8(system_table: &SystemTable, string: &str) -> Result {
     for c in string.encode_utf16() {
-        system_table.con_out().output_string(&[c, 0])?;
+        system_table
+            .con_out()
+            .output_string(unsafe { WStr::from_bytes(&[c, 0]) })?;
     }
 
     system_table.con_out().output_string(w!("\r\n"))?;
@@ -130,7 +132,7 @@ fn _print_utf8(system_table: &SystemTable, string: &str) -> Result {
 
 #[panic_handler]
 fn panic(_panic: &core::panic::PanicInfo<'_>) -> ! {
-    extern "C" {
+    unsafe extern "C" {
         pub fn do_not_panic() -> !;
     }
 
