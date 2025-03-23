@@ -43,8 +43,9 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.6.5"
-source = "git+https://github.com/morr0ne/linux-raw-sys.git?branch=feature%2Farm-image-header#3848eb92996db0c5effe4720b841ead138e0db5a"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe7db12097d22ec582439daf8618b8fdd1a7bef6270e9af3b1ebcd30893cf413"
 
 [[package]]
 name = "proc-macro2"

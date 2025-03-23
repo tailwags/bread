@@ -11,7 +11,7 @@ publish = false
 [dependencies]
 effie = "0.0.1"
 itoa = "1.0.14"
-linux-raw-sys = { git = "https://github.com/morr0ne/linux-raw-sys.git", branch = "feature/arm-image-header", version = "0.6.5", default-features = false, features = [
+linux-raw-sys = { version = "0.9.3", default-features = false, features = [
     "no_std",
     "bootparam",
     "image",
