@@ -1,7 +1,7 @@
 [package]
 name = "bread"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "Apache-2.0"
 authors = ["Matilde Morrone <contact@morrone.dev>"]
 repository = "https://github.com/morr0ne/bread"

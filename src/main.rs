@@ -5,9 +5,10 @@ extern crate alloc;
 
 // use alloc::vec::Vec;
 use effie::{
+    Result, WStr,
     protocols::{FileMode, LoadedImage, SimpleFilesystem},
     tables::{Signature, SystemTable},
-    w, Result, WStr,
+    w,
 };
 
 use core::mem::size_of;
@@ -120,9 +121,11 @@ fn _print_num<I: Integer>(system_table: &SystemTable, i: I) -> Result {
 
 fn _print_utf8(system_table: &SystemTable, string: &str) -> Result {
     for c in string.encode_utf16() {
+        let b = [c, 0];
+
         system_table
             .con_out()
-            .output_string(unsafe { WStr::from_bytes(&[c, 0]) })?;
+            .output_string(unsafe { WStr::from_bytes(&b) })?;
     }
 
     system_table.con_out().output_string(w!("\r\n"))?;
