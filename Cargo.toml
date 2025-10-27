@@ -10,8 +10,8 @@ publish = false
 
 [dependencies]
 effie = "0.0.1"
-itoa = "1.0.14"
-linux-raw-sys = { version = "0.9.3", default-features = false, features = [
+itoa = "1.0.15"
+linux-raw-sys = { version = "0.12.0", default-features = false, features = [
     "no_std",
     "bootparam",
     "image",
