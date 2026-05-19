@@ -4,3 +4,4 @@ tmp
 OVMF_VARS.4m.fd
 esp
 bread.efi
+.direnv
