@@ -1,6 +1,11 @@
+cargo-features = ["profile-rustflags"]
+
 [unstable]
 build-std = ["core", "alloc"]
+profile-rustflags = true
 
 [build]
 target = ["aarch64-unknown-uefi", "x86_64-unknown-uefi"]
+
+[profile.release]
 rustflags = ["-Zlocation-detail=none"]
