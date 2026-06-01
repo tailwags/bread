@@ -3,8 +3,8 @@ name = "bread"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
-authors = ["Matilde Morrone <contact@morrone.dev>"]
-repository = "https://github.com/morr0ne/bread"
+authors = ["Matilde Morrone <contact@matilde.pet>"]
+repository = "https://github.com/tailwags/bread"
 readme = "README.md"
 publish = false
 
