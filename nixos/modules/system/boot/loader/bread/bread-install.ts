@@ -19,7 +19,6 @@
 import { basename, dirname, join } from "jsr:@std/path@^1";
 import { join as winJoin } from "jsr:@std/path@^1/windows";
 import { ensureDir, exists, move, walk } from "jsr:@std/fs@^1";
-import { encodeHex } from "jsr:@std/encoding@^1/hex";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,8 +78,9 @@ const log = (msg: string) => console.log(msg);
 const warn = (msg: string) => console.error(`warning: ${msg}`);
 
 const efiPath = (...parts: string[]) => "\\" + winJoin(...parts);
-/** Shorthand for paths inside \EFI\nixos\. */
-const nixosEfiPath = (filename: string) => efiPath("EFI", "nixos", filename);
+/** Shorthand for paths inside \EFI\bread\kernels\. */
+const kernelEfiPath = (filename: string) =>
+  efiPath("EFI", "bread", "kernels", filename);
 
 const BOOTSPEC_KEY = "org.nixos.bootspec.v1";
 const SPEC_KEY = "org.nixos.specialisation.v1";
@@ -220,27 +220,29 @@ async function atomicCopyIfAbsent(src: string, dst: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
- * Copy a kernel/initrd file to nixosDir using a hash of its store path as the
- * name.  Returns the destination path and records it in `referenced`.
+ * Derive an ESP filename from a resolved Nix store path, matching the
+ * convention used by limine and systemd-boot:
  *
- * We hash the resolved store path string rather than the file content because
- * Nix's content-addressing guarantees that the store path is a reliable proxy
- * for file identity: the same path always contains the same bytes.  Hashing
- * the path string is orders of magnitude faster than hashing a 10 MB kernel.
+ *   /nix/store/<hash>-linux-6.18.8/bzImage  ->  <hash>-linux-6.18.8-bzImage
+ *
+ * The leading store hash makes the name content-addressed, so identical store
+ * paths produce identical names: a kernel shared across generations is copied
+ * once and de-duplicated on the ESP, and the name stays human-readable.
+ */
+const storePathName = (resolved: string) =>
+  `${basename(dirname(resolved))}-${basename(resolved)}`;
+
+/**
+ * Copy a kernel/initrd file to kernelsDir under its store-path-derived name.
+ * Returns the destination path and records it in `referenced`.
  */
 async function copyKernelFile(
   srcPath: string,
-  nixosDir: string,
-  suffix: string,
+  kernelsDir: string,
   referenced: Set<string>,
 ): Promise<string> {
   const resolved = await Deno.realPath(srcPath);
-  const hashBuf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(resolved),
-  );
-  const h = encodeHex(hashBuf).slice(0, 16);
-  const dst = join(nixosDir, `${h}${suffix}`);
+  const dst = join(kernelsDir, storePathName(resolved));
   await atomicCopyIfAbsent(resolved, dst);
   referenced.add(dst);
   return dst;
@@ -273,38 +275,28 @@ async function buildLinuxEntry(
   id: string,
   name: string,
   spec: BootSpec,
-  nixosDir: string,
+  kernelsDir: string,
   referenced: Set<string>,
 ): Promise<LinuxEntry> {
-  const kernelDst = await copyKernelFile(
-    spec.kernel,
-    nixosDir,
-    ".efi",
-    referenced,
-  );
+  const kernelDst = await copyKernelFile(spec.kernel, kernelsDir, referenced);
   const initrdPaths: string[] = [];
 
   if (spec.initrd) {
-    const dst = await copyKernelFile(
-      spec.initrd,
-      nixosDir,
-      ".initrd",
-      referenced,
-    );
-    initrdPaths.push(nixosEfiPath(basename(dst)));
+    const dst = await copyKernelFile(spec.initrd, kernelsDir, referenced);
+    initrdPaths.push(kernelEfiPath(basename(dst)));
   }
 
   if (spec.initrdSecrets) {
     // initrdSecrets is an executable that writes secrets to stdout (or a path).
     // We need to run it to produce the actual secrets initrd, then copy that.
     const secretsDst = join(
-      nixosDir,
+      kernelsDir,
       `${basename(spec.toplevel)}-secrets.initrd`,
     );
     const ok = await runInitrdSecrets(spec.initrdSecrets, secretsDst);
     if (ok) {
       referenced.add(secretsDst);
-      initrdPaths.push(nixosEfiPath(basename(secretsDst)));
+      initrdPaths.push(kernelEfiPath(basename(secretsDst)));
     }
   }
 
@@ -315,7 +307,7 @@ async function buildLinuxEntry(
     type: "linux",
     id,
     name,
-    kernel: nixosEfiPath(basename(kernelDst)),
+    kernel: kernelEfiPath(basename(kernelDst)),
     initrd: initrdPaths,
   };
   if (cmdlineParts.length > 0) {
@@ -379,7 +371,7 @@ async function runInitrdSecrets(
 
 async function buildGenerationEntries(
   generations: Generation[],
-  nixosDir: string,
+  kernelsDir: string,
   referenced: Set<string>,
 ): Promise<{ entries: BootEntry[]; defaultId: string }> {
   // Build all generations concurrently; Promise.all preserves sorted order.
@@ -393,7 +385,7 @@ async function buildGenerationEntries(
         genId,
         `Generation ${gen.number}`,
         spec,
-        nixosDir,
+        kernelsDir,
         referenced,
       );
 
@@ -407,7 +399,7 @@ async function buildGenerationEntries(
             `nixos-gen-${gen.number}-spec-${specName}`,
             specName,
             specData,
-            nixosDir,
+            kernelsDir,
             referenced,
           ),
         );
@@ -450,14 +442,14 @@ async function buildGenerationEntries(
 // Garbage-collect stale ESP files
 // ---------------------------------------------------------------------------
 
-async function gcNixosDir(
-  nixosDir: string,
+async function gcKernelsDir(
+  kernelsDir: string,
   referenced: Set<string>,
 ): Promise<void> {
-  if (!await exists(nixosDir, { isDirectory: true })) return;
+  if (!await exists(kernelsDir, { isDirectory: true })) return;
 
   for await (
-    const entry of walk(nixosDir, {
+    const entry of walk(kernelsDir, {
       maxDepth: 1,
       includeFiles: true,
       includeDirs: false,
@@ -474,7 +466,10 @@ async function gcNixosDir(
 // EFI variable registration (efibootmgr)
 // ---------------------------------------------------------------------------
 
-async function registerEfiEntry(esp: string, efibootmgr: string): Promise<void> {
+async function registerEfiEntry(
+  esp: string,
+  efibootmgr: string,
+): Promise<void> {
   let partDev: string;
   try {
     partDev = await runOutput("findmnt", [
@@ -500,7 +495,12 @@ async function registerEfiEntry(esp: string, efibootmgr: string): Promise<void> 
   let pkname: string;
   let partNum: string;
   try {
-    const out = await runOutput("lsblk", ["-no", "PKNAME,PARTN", "--raw", partDev]);
+    const out = await runOutput("lsblk", [
+      "-no",
+      "PKNAME,PARTN",
+      "--raw",
+      partDev,
+    ]);
     [pkname, partNum] = out.split(/\s+/);
   } catch {
     warn(
@@ -560,11 +560,11 @@ async function registerEfiEntry(esp: string, efibootmgr: string): Promise<void> 
 
 async function install(cfg: InstallConfig): Promise<void> {
   const esp = cfg.efiSysMountPoint;
-  const nixosDir = join(esp, "EFI", "nixos");
   const breadDir = join(esp, "EFI", "bread");
+  const kernelsDir = join(breadDir, "kernels");
 
-  await ensureDir(nixosDir);
   await ensureDir(breadDir);
+  await ensureDir(kernelsDir);
 
   // --- Discover generations ---
   const generations = await findGenerations(cfg.maxGenerations);
@@ -576,12 +576,14 @@ async function install(cfg: InstallConfig): Promise<void> {
   const referenced = new Set<string>();
   const { entries: genEntries, defaultId } = await buildGenerationEntries(
     generations,
-    nixosDir,
+    kernelsDir,
     referenced,
   );
 
-  // --- GC stale files from EFI/nixos/ ---
-  await gcNixosDir(nixosDir, referenced);
+  // --- GC stale files from EFI/bread/kernels/ ---
+  // Safe because this directory is owned exclusively by bread; we never touch
+  // the shared EFI/nixos/ that other loaders (systemd-boot) may also populate.
+  await gcKernelsDir(kernelsDir, referenced);
 
   // --- Wrap all generation entries in a NixOS folder ---
   const nixosFolder: FolderEntry = {
