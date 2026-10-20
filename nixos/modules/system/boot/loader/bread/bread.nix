@@ -18,7 +18,7 @@ let
   arch = pkgs.stdenv.hostPlatform.uname.processor;
   efiFile = efiFileForArch.${arch} or (throw "boot.loader.bread: unsupported architecture: ${arch}");
 
-  # Normalise typed extraEntries submodules and raw extraEntriesAttrs into one JSON array.
+  # Normalise typed extraEntries submodules and raw extraEntriesAttrs into one list.
   allExtraEntries =
     map (
       e:
@@ -32,63 +32,30 @@ let
     ) cfg.extraEntries
     ++ cfg.extraEntriesAttrs;
 
-  # Pre-populated Deno module cache for bread-install.ts's jsr:@std imports.
-  # This is a fixed-output derivation (FOD) that fetches all remote sources
-  # once at Nix evaluation / build time so the installer can run offline
-  # inside the NixOS disk-image VM (which has no network access).
-  # Only the content-addressed remote/ tree is kept; the sqlite caches are
-  # intentionally excluded because they are not needed for --cached-only runs
-  # and their WAL files are non-deterministic.
-  # To update: delete the hash, run `nix build`, and paste the new hash.
-  denoCache = pkgs.stdenvNoCC.mkDerivation {
-    name = "bread-install-deno-cache";
-    nativeBuildInputs = [ pkgs.deno ];
-    outputHashAlgo = "sha256";
-    outputHashMode = "recursive";
-    outputHash = "sha256-j5nNa6bdcnBHEuCqS16WNrud3Y+hbaPUXiS0y3NOxJs=";
-
-    # No source archive to unpack; the script is passed directly as a store path.
-    dontUnpack = true;
-
-    buildPhase = ''
-      export DENO_DIR="$PWD/deno-cache"
-      deno cache --no-npm ${./bread-install.ts}
-    '';
-
-    installPhase = ''
-      # Copy only the content-addressed remote/ tree.
-      mkdir -p "$out"
-      cp -r "$DENO_DIR/remote" "$out/"
-    '';
-  };
-
-  # JSON config file passed to bread-install.ts at install time.
-  # All install parameters live here — no string-substitution into the script.
-  installConfigFile = pkgs.writeText "bread-install-config.json" (
+  # Substituted into bread-install.py, like limine.nix does for limine-install.py.
+  # rememberLast is not passed: bread does not implement it yet.
+  installConfigFile = pkgs.writeText "bread-install.json" (
     builtins.toJSON {
-      efiSysMountPoint = efi.efiSysMountPoint;
+      nixEnv = "${config.nix.package}/bin/nix-env";
+      efibootmgr = "${pkgs.efibootmgr}/bin/efibootmgr";
+      inherit (efi) efiSysMountPoint canTouchEfiVariables;
       efiBinary = "${cfg.package}/share/bread/bread.efi";
-      efiFile = efiFile;
-      timeout = cfg.timeout;
-      rememberLast = cfg.rememberLast;
-      maxGenerations = cfg.maxGenerations;
-      font = cfg.font;
-      canTouchEfiVariables = efi.canTouchEfiVariables;
-      efibootmgrBin = "${pkgs.efibootmgr}/bin/efibootmgr";
-      removable = cfg.efiInstallAsRemovable;
+      inherit efiFile;
+      inherit (cfg) timeout font;
+      maxGenerations = if cfg.maxGenerations == null then 0 else cfg.maxGenerations;
+      efiRemovable = cfg.efiInstallAsRemovable;
       extraEntries = allExtraEntries;
     }
   );
 
-  installScript = pkgs.writeScript "bread-install-boot-loader" ''
-    #!${pkgs.runtimeShell}
-    export DENO_DIR=${denoCache}
-    exec ${pkgs.deno}/bin/deno run \
-      --cached-only \
-      --allow-read --allow-write --allow-run --allow-env \
-      ${./bread-install.ts} \
-      ${installConfigFile} "$@"
-  '';
+  installScript = pkgs.replaceVarsWith {
+    src = ./bread-install.py;
+    isExecutable = true;
+    replacements = {
+      inherit (pkgs) python3;
+      configPath = installConfigFile;
+    };
+  };
 in
 {
   options.boot.loader.bread = {
@@ -223,7 +190,8 @@ in
       description = ''
         Extra boot entries as raw attribute sets (no type-checking).
         Use this for {val}`folder` entries or any shape not covered by {option}`extraEntries`.
-        Values must be JSON-serialisable.
+        Values must be strings, numbers, booleans or lists of them (written one line per element);
+        {val}`entries` holds nested entries. Values cannot contain newlines or leading/trailing whitespace.
       '';
     };
   };
