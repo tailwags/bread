@@ -26,8 +26,13 @@ Before building Bread, there are a few prerequisites:
 - [QEMU](https://www.qemu.org/) can be optionally installed to run the
   bootloader in a VM.
 
-To build Bread, simply run `just` in the terminal. You can then copy the
-resulting `bread.efi` file to your EFI partition.
+To build Bread, run `just build` (or `cargo build --release`) in the terminal.
+You can then copy the resulting `bread.efi` file from
+`target/<arch>-unknown-uefi/release/` to your EFI partition.
+
+> [!NOTE]
+> Building without the release profile is not supported. Debug builds will fail
+> to link
 
 To run inside a vm, ensure QEMU is available in the PATH, then run:
 

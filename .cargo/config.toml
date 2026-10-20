@@ -2,6 +2,7 @@ cargo-features = ["profile-rustflags"]
 
 [unstable]
 build-std = ["core", "alloc"]
+build-std-features = ["optimize_for_size"]
 profile-rustflags = true
 
 [build]

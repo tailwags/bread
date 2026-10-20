@@ -2,9 +2,6 @@ _:
     @just --list
 
 build:
-    cargo build
-
-build-release:
     cargo build --release
 
 [working-directory('vm')]

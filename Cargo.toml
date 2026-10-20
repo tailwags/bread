@@ -9,18 +9,34 @@ readme = "README.md"
 publish = false
 
 [dependencies]
-effie = "0.0.1"
-itoa = "1.0.15"
-linux-raw-sys = { version = "0.12.0", default-features = false, features = [
+effie = { version = "0.2.0", features = ["log"] }
+effie-log = { version = "0.2.0" }
+log = { version = "0.4", default-features = false, features = [
+    "release_max_level_info",
+] }
+linux-raw-sys = { version = "0.12.1", default-features = false, features = [
     "no_std",
     "bootparam",
     "image",
 ] }
+blake3 = { version = "1.8.7", default-features = false, features = ["pure"] }
 
 [profile.release]
 lto = true
 codegen-units = 1
 strip = true
+trim-paths = "all"
+opt-level = "z"
+rustflags = ["-Zfmt-debug=none", "-Cllvm-args=-enable-machine-outliner=always"]
+
+# Hashing big kernels/initrds is the one CPU-bound path.
+[profile.release.package.blake3]
+opt-level = 3
+
+[profile.bloat]
+inherits = "release"
+debug = true
 
 [patch.crates-io]
-effie = { path = "../effie" }
+# effie = { path = "../effie" }
+# effie-log = { path = "../effie/log" }
