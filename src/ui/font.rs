@@ -10,8 +10,8 @@
 //! Fonts borrow their data and never allocate, so the panic handler can draw
 //! with them too.
 
+use crate::config::FileRef;
 use crate::error::{Error, Result};
-use crate::esp::FileRef;
 
 const MAGIC: usize = 0x864a_b572;
 const HAS_UNICODE_TABLE: usize = 1;

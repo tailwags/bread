@@ -14,17 +14,20 @@ const HEADER: &[u8] = b"bread log\r\n\
 /// Writes the log, given as two consecutive parts, replacing any previous
 /// log. Needs boot services.
 pub fn save(older: &[u8], newer: &[u8]) -> Option<()> {
-    let mut root = crate::esp::root().ok()?;
+    let mut root = crate::firmware::fs::root().ok()?;
+
     // Opening with CREATE would keep the old file's contents past our end.
     if let Ok(old) = root.open(PATH, FileMode::READ | FileMode::WRITE) {
         let _ = old.delete();
     }
+
     let mode = FileMode::READ | FileMode::WRITE | FileMode::CREATE;
     let mut file = root.open(PATH, mode).ok()?;
 
     for part in [HEADER, b"---- log, oldest first ----\r\n", older, newer] {
         write_all(&mut file, part)?;
     }
+
     file.flush().ok()
 }
 
@@ -44,5 +47,6 @@ fn write_all(file: &mut FileHandle, mut data: &[u8]) -> Option<()> {
             Ok(n) => data = &data[n..],
         }
     }
+
     Some(())
 }

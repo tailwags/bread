@@ -3,7 +3,8 @@
 //! Every line is a key, whitespace, then a value running to the end of the
 //! line, so values never need quoting. `linux`, `efi` and `folder` open an
 //! entry named by their value, closed by `end`; folders nest. Indentation is
-//! cosmetic and lines starting with `#` are comments.
+//! cosmetic and lines starting with `#` are comments. The keys inside a
+//! `linux` or `efi` entry belong to its [protocol](crate::protocols).
 //!
 //! ```text
 //! timeout 5
@@ -23,8 +24,13 @@
 use alloc::{string::String, vec::Vec};
 use core::{fmt, str::Lines};
 
+mod file_ref;
+
+pub use file_ref::FileRef;
+
 use crate::error::{Error, Result, ensure};
-use crate::esp::{self, FileRef};
+use crate::firmware::fs;
+use crate::protocols::{Builder, Protocol};
 
 const PATH: &str = "\\EFI\\bread\\bread.conf";
 
@@ -42,8 +48,9 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Result<Self> {
-        let data = esp::read_file(PATH)?;
+        let data = fs::read_file(PATH)?;
         let text = str::from_utf8(&data).map_err(|e| Error::new(format_args!("{PATH}: {e}")))?;
+
         let mut parser = Parser {
             lines: text.lines(),
             line: 0,
@@ -56,6 +63,7 @@ impl Config {
             firmware_setup: false,
             entries: Vec::new(),
         };
+
         while let Some((key, value)) = parser.next() {
             match key {
                 "timeout" => {
@@ -66,12 +74,14 @@ impl Config {
                 "default" => config.default = Some(value.into()),
                 "font" => config.font = Some(parser.file(value)?),
                 "firmware-setup" => config.firmware_setup = parser.yes_no(value)?,
-                "linux" | "efi" | "folder" => config.entries.push(parser.entry(key, value)?),
+                _ if opens_entry(key) => config.entries.push(parser.entry(key, value)?),
                 "end" => return Err(parser.error("'end' outside an entry")),
                 _ => parser.unknown(key),
             }
         }
+
         ensure!(!config.entries.is_empty(), "{PATH} has no entries");
+
         Ok(config)
     }
 }
@@ -83,21 +93,8 @@ pub struct Entry {
 }
 
 pub enum Kind {
-    Linux(Linux),
-    Efi(Efi),
+    Boot(Protocol),
     Folder(Folder),
-}
-
-pub struct Linux {
-    pub kernel: FileRef,
-    /// Concatenated in order into a single initrd.
-    pub initrd: Vec<FileRef>,
-    pub cmdline: Option<String>,
-}
-
-/// A UEFI application to chainload.
-pub struct Efi {
-    pub path: FileRef,
 }
 
 pub struct Folder {
@@ -118,53 +115,53 @@ impl<'a> Parser<'a> {
         for line in self.lines.by_ref() {
             self.line += 1;
             let line = line.trim();
+
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
+
             return Some(match line.split_once([' ', '\t']) {
                 Some((key, value)) => (key, value.trim_start()),
                 None => (line, ""),
             });
         }
+
         None
     }
 
-    /// Parses the body of an entry opened by `kind` up to its `end`.
-    fn entry(&mut self, kind: &str, id: &str) -> Result<Entry> {
+    /// Parses the body of an entry opened by `keyword` up to its `end`.
+    /// Folders are read here, everything else by its protocol.
+    fn entry(&mut self, keyword: &str, id: &str) -> Result<Entry> {
         let mut name = None;
-        let (mut kernel, mut initrd, mut cmdline) = (None, Vec::new(), None);
-        let mut path = None;
+        let mut protocol = Builder::new(keyword);
         let (mut default, mut entries) = (None, Vec::new());
 
         loop {
             let Some((key, value)) = self.next() else {
                 return Err(self.error(format_args!("'{id}' is missing its 'end'")));
             };
-            match (kind, key) {
+
+            match (&mut protocol, key) {
                 (_, "end") => break,
                 (_, "name") => name = Some(value.into()),
-                ("linux", "kernel") => kernel = Some(self.file(value)?),
-                ("linux", "initrd") => initrd.push(self.file(value)?),
-                ("linux", "cmdline") => cmdline = Some(value.into()),
-                ("efi", "path") => path = Some(self.file(value)?),
-                ("folder", "default") => default = Some(value.into()),
-                ("folder", "linux" | "efi" | "folder") => entries.push(self.entry(key, value)?),
-                _ => self.unknown(key),
+                (Some(protocol), _) => {
+                    if !protocol.key(key, value).map_err(|e| self.error(e))? {
+                        self.unknown(key);
+                    }
+                }
+                (None, "default") => default = Some(value.into()),
+                (None, _) if opens_entry(key) => entries.push(self.entry(key, value)?),
+                (None, _) => self.unknown(key),
             }
         }
 
         let missing = |field| self.error(format_args!("'{id}' has no {field}"));
-        let kind = match kind {
-            "linux" => Kind::Linux(Linux {
-                kernel: kernel.ok_or_else(|| missing("kernel"))?,
-                initrd,
-                cmdline,
-            }),
-            "efi" => Kind::Efi(Efi {
-                path: path.ok_or_else(|| missing("path"))?,
-            }),
-            _ => Kind::Folder(Folder { default, entries }),
+
+        let kind = match protocol {
+            Some(protocol) => Kind::Boot(protocol.finish().map_err(missing)?),
+            None => Kind::Folder(Folder { default, entries }),
         };
+
         Ok(Entry {
             id: id.into(),
             name: name.ok_or_else(|| missing("name"))?,
@@ -192,4 +189,9 @@ impl<'a> Parser<'a> {
     fn error(&self, message: impl fmt::Display) -> Error {
         Error::new(format_args!("{PATH}:{}: {message}", self.line))
     }
+}
+
+/// Whether `key` starts a nested entry: a folder or a protocol's entry.
+fn opens_entry(key: &str) -> bool {
+    key == "folder" || Builder::new(key).is_some()
 }

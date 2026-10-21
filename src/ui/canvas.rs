@@ -6,6 +6,7 @@ use effie::Protocol;
 use effie::protocols::{BltPixel, GopPixelFormat, GraphicsOutput};
 
 use super::font::Font;
+use super::surface::Surface;
 
 /// Frames are drawn into an off-screen buffer in ordinary RAM, which is much
 /// faster than drawing into the framebuffer, then copied to the screen with
@@ -110,5 +111,27 @@ impl Canvas {
             self.height,
             self.width,
         );
+    }
+}
+
+impl Surface for Canvas {
+    fn width(&self) -> usize {
+        self.width
+    }
+
+    fn height(&self) -> usize {
+        self.height
+    }
+
+    fn font(&self) -> &Font {
+        &self.font
+    }
+
+    fn fill(&mut self, x: usize, y: usize, width: usize, height: usize, color: BltPixel) {
+        Canvas::fill(self, x, y, width, height, color);
+    }
+
+    fn text(&mut self, x: usize, y: usize, text: &str, fg: BltPixel, bg: BltPixel) -> usize {
+        Canvas::text(self, x, y, text, fg, bg)
     }
 }

@@ -1,49 +1,14 @@
-//! Booting Linux through its native boot protocol rather than the EFI stub.
-//! bread places the kernel, initrd and boot information in memory itself,
-//! exits boot services and jumps to the kernel.
-//!
-//! Booting is split at the point of no return: [`prepare`] does everything
-//! that can fail and still go back to the menu, and [`Prepared::start`]
-//! everything after.
+//! Memory handed on to what bread boots, and leaving boot services.
 
-#[cfg(target_arch = "aarch64")]
-mod aarch64;
-#[cfg(target_arch = "aarch64")]
-use aarch64 as arch;
-#[cfg(target_arch = "x86_64")]
-mod x86_64;
-#[cfg(target_arch = "x86_64")]
-use x86_64 as arch;
-
-use alloc::vec::Vec;
 use core::mem::ManuallyDrop;
 
 use effie::tables::{MemoryMap, MemoryType, PhysicalAddress};
 
-use crate::config::Linux;
-use crate::error::{Context, Result};
-use crate::esp::FileRef;
-
-pub use arch::Prepared;
-
-const PAGE_SIZE: usize = 4096;
-
-/// Reads and verifies the kernel and initrd, and places them and the boot
-/// information in memory. Then [`Prepared::start`] boots.
-///
-/// Every file is read and verified before any page is allocated, so the
-/// common failures (a missing file, a digest mismatch) leak nothing. Pages
-/// allocated before a later failure (a bad image, an allocation that does not
-/// fit) are never freed. That is harmless while the only ways on from a
-/// failure are the menu and a reboot.
-pub fn prepare(entry: &Linux) -> Result<Prepared> {
-    let kernel = entry.kernel.read()?;
-    arch::prepare(entry, &kernel)
-}
+pub const PAGE_SIZE: usize = 4096;
 
 /// Where [`alloc_pages`] may put memory.
 #[derive(Clone, Copy)]
-enum Placement {
+pub enum Placement {
     Anywhere,
     /// Ending at or below this address.
     #[cfg_attr(
@@ -59,10 +24,11 @@ enum Placement {
 }
 
 /// Allocates zeroed memory to hand to the kernel. It is never freed.
-fn alloc_pages(len: usize, placement: Placement) -> effie::Result<&'static mut [u8]> {
+pub fn alloc_pages(len: usize, placement: Placement) -> effie::Result<&'static mut [u8]> {
     let boot_services = effie::system_table().boot_services();
     let pages = len.div_ceil(PAGE_SIZE).max(1);
     let ty = MemoryType::LOADER_DATA;
+
     let address = match placement {
         Placement::Anywhere => boot_services.allocate_any_pages(ty, pages)?.0,
         Placement::Below(max) => {
@@ -75,6 +41,7 @@ fn alloc_pages(len: usize, placement: Placement) -> effie::Result<&'static mut [
             address
         }
     };
+
     // SAFETY: the firmware just gave us these pages, and UEFI identity-maps
     // memory. They are zeroed before any reference to them exists.
     unsafe {
@@ -85,7 +52,7 @@ fn alloc_pages(len: usize, placement: Placement) -> effie::Result<&'static mut [
 }
 
 /// Like [`alloc_pages`], with the start aligned to `align`, a power of two.
-fn alloc_aligned(
+pub fn alloc_aligned(
     len: usize,
     align: usize,
     placement: Placement,
@@ -97,36 +64,16 @@ fn alloc_aligned(
     Ok(&mut memory[skip..skip + len])
 }
 
-/// Reads the initrd parts into one block of memory. Returns `None` if there
-/// are no parts.
-fn load_initrd(parts: &[FileRef], placement: Placement) -> Result<Option<&'static [u8]>> {
-    if parts.is_empty() {
-        return Ok(None);
-    }
-    let parts = parts
-        .iter()
-        .map(FileRef::read)
-        .collect::<Result<Vec<_>>>()?;
-    let len = parts.iter().map(Vec::len).sum();
-    let initrd = alloc_pages(len, placement).context("allocating memory for the initrd")?;
-
-    let mut offset = 0;
-    for part in &parts {
-        initrd[offset..offset + part.len()].copy_from_slice(part);
-        offset += part.len();
-    }
-    log::info!("initrd: {len} bytes at {:#x}", initrd.as_ptr() as usize);
-    Ok(Some(initrd))
-}
-
 /// Stops serial logging and exits boot services. After this nothing may
 /// allocate, and the returned map must not be dropped. Nothing can be undone
 /// at this point, so a failure panics.
-fn exit_boot_services() -> ManuallyDrop<MemoryMap> {
+pub fn exit_boot_services() -> ManuallyDrop<MemoryMap> {
     log::info!("exiting boot services");
+
     // Logging must not call firmware between fetching the memory map and
     // exiting, or the map would change and the exit fail.
     effie_log::detach();
+
     // SAFETY: bread is its own image, and nothing is used after this that
     // needs boot services.
     match unsafe { effie::exit_boot_services() } {

@@ -7,9 +7,9 @@ use core::{arch::asm, mem::size_of};
 
 use linux_raw_sys::image::arm64_image_header;
 
-use super::{Placement, alloc_aligned, exit_boot_services, load_initrd};
-use crate::config::Linux;
+use super::{Linux, load_initrd};
 use crate::error::{Context, Error, Result, ensure};
+use crate::firmware::memory::{Placement, alloc_aligned, exit_boot_services};
 
 /// "ARM\x64"
 const MAGIC: u32 = 0x644d_5241;

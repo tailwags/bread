@@ -7,9 +7,11 @@ use effie::protocols::{GopPixelFormat, GraphicsOutput};
 use effie::tables::{MemoryMap, MemoryType};
 use linux_raw_sys::bootparam::{boot_e820_entry, boot_params, efi_info, screen_info, setup_header};
 
-use super::{Placement, alloc_aligned, alloc_pages, exit_boot_services, load_initrd};
-use crate::config::Linux;
+use super::{Linux, load_initrd};
 use crate::error::{Context, Result, ensure};
+use crate::firmware::memory::{
+    PAGE_SIZE, Placement, alloc_aligned, alloc_pages, exit_boot_services,
+};
 
 /// Offset of the setup header, both in the image and in `boot_params`.
 const SETUP_HEADER: usize = 0x1f1;
@@ -226,7 +228,7 @@ fn fill_e820(bp: &mut boot_params, map: &MemoryMap) {
     let mut len: usize = 0;
     for descriptor in map.iter() {
         let addr = descriptor.physical_start.0;
-        let size = descriptor.number_of_pages * super::PAGE_SIZE as u64;
+        let size = descriptor.number_of_pages * PAGE_SIZE as u64;
         let type_ = e820_type(descriptor.ty);
 
         if let Some(last) = len.checked_sub(1).map(|i| &mut table[i])

@@ -12,12 +12,9 @@
 use core::fmt::Write;
 use core::panic::PanicInfo;
 
-use effie::tables::ResetType;
 use effie_log::Buf;
 
-use crate::logfile;
-use crate::ui::font::EMBEDDED;
-use crate::ui::report::{self, Report, Style};
+use crate::ui::screens::crash;
 
 #[panic_handler]
 fn panic(info: &PanicInfo<'_>) -> ! {
@@ -28,6 +25,7 @@ fn panic(info: &PanicInfo<'_>) -> ! {
     // Formatted apart, so a long message cannot push out the location.
     let mut message = Buf::<512>::new();
     let _ = write!(message, "{}", info.message());
+
     let mut body = Buf::<704>::new();
     let _ = match info.location() {
         Some(at) => write!(
@@ -44,28 +42,13 @@ fn panic(info: &PanicInfo<'_>) -> ! {
     // The screen, the file system and the keyboard all need boot services.
     // SAFETY: effie stores a valid system table pointer before calling `main`.
     let system_table = effie::system_table_raw().map(|table| unsafe { table.as_ref() });
+
     if let Some(st) = system_table
         && let Some(boot_services) = st.boot_services_opt()
     {
-        // Taken first, so the log ends with the panic.
-        let (older, newer) = effie_log::take_history();
-        let saved = logfile::save(older, newer).is_some();
-        let report = Report {
-            style: Style::Crash,
-            font: &EMBEDDED,
-            title: "bread crashed",
-            body: body.as_str(),
-            notes: &[
-                logfile::note(saved),
-                "Please report this at https://github.com/tailwags/bread",
-            ],
-            keys: &[("Any key", "reboot")],
-        };
-        report::show(st, boot_services, &report);
-        if report::wait_for_key(st, boot_services, None, |_| true).is_some() {
-            st.runtime_services().reset_system(ResetType::Cold);
-        }
+        crash::show(st, boot_services, body.as_str());
     }
+
     halt()
 }
 

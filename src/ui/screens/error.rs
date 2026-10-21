@@ -6,10 +6,12 @@ use alloc::{format, string::String, vec::Vec};
 
 use effie::protocols::InputKey;
 
-use super::font::Font;
-use super::report::{self, Report, Style};
 use crate::error::Error;
 use crate::logfile;
+use crate::ui::font::Font;
+use crate::ui::input;
+use crate::ui::report::{self, Report};
+use crate::ui::theme;
 
 /// A way on from an error screen.
 #[derive(Clone, Copy)]
@@ -68,7 +70,7 @@ pub fn show(
     let st = effie::system_table();
     let boot_services = st.boot_services();
     let report = Report {
-        style: Style::Error,
+        palette: &theme::MENU,
         font,
         title,
         body: &body,
@@ -77,7 +79,7 @@ pub fn show(
     };
     report::show(st, boot_services, &report);
 
-    let key = report::wait_for_key(st, boot_services, timeout, |key| {
+    let key = input::wait_for_fresh(st, boot_services, timeout, |key| {
         actions.iter().any(|action| action.matches(key))
     });
     match key {

@@ -20,20 +20,26 @@ pub fn setup_supported() -> bool {
 /// Returns only on failure.
 pub fn reboot_to_setup() -> Result<!> {
     let name = w!("OsIndications");
+
     let bits = match read_u64(name) {
         Ok(bits) => bits,
         Err(Status::NOT_FOUND) => 0,
         Err(status) => return Err(status).context("reading OsIndications"),
     };
+
     let attributes = VariableAttributes::NON_VOLATILE
         | VariableAttributes::BOOTSERVICE_ACCESS
         | VariableAttributes::RUNTIME_ACCESS;
+
     let bits = (bits | BOOT_TO_FW_UI).to_le_bytes();
+
     effie::system_table()
         .runtime_services()
         .set_variable(name, &GLOBAL_VARIABLE, attributes, &bits)
         .context("setting OsIndications")?;
+
     log::info!("rebooting into the firmware setup");
+
     reboot()
 }
 
@@ -45,14 +51,17 @@ pub fn reboot() -> ! {
 
 fn read_u64(name: &WStr) -> effie::Result<u64> {
     let mut bytes = [0; 8];
+
     // SAFETY: boot services are still running.
     let (_, len) = unsafe {
         effie::system_table()
             .runtime_services()
             .get_variable(name, &GLOBAL_VARIABLE, &mut bytes)
     }?;
+
     if len != bytes.len() {
         return Err(Status::BAD_BUFFER_SIZE);
     }
+
     Ok(u64::from_le_bytes(bytes))
 }
