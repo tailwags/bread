@@ -71,9 +71,9 @@ dependencies = [
 
 [[package]]
 name = "effie"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1df6a088ff9fe502f2b1cb3fb1305922f89d1a476b9e7a41b3d66991d7d0169"
+checksum = "7a9696d8b16101bbbcc795f2dd1d8875c8acd27f33020477374786788f093969"
 dependencies = [
  "bitflags",
  "effie-macros",
@@ -82,9 +82,9 @@ dependencies = [
 
 [[package]]
 name = "effie-log"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "248e160b2b56a781282fb70350b9c95eeae6bf117050778929981a621db7e26f"
+checksum = "9fde1b308c603aa33c9553697cf137c61b62cf1eb988feb06450f576c70237cb"
 dependencies = [
  "effie",
  "log",
@@ -92,9 +92,9 @@ dependencies = [
 
 [[package]]
 name = "effie-macros"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "697c9babaed75e51c62c3c606c06146abb1fda95474e5960a9f1443ef56ecbdb"
+checksum = "bc23452d476ac05717af1484169afbd617831297b286911a2cbd4064b552fea5"
 
 [[package]]
 name = "find-msvc-tools"

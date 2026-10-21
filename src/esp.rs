@@ -61,7 +61,7 @@ impl FileRef {
             let actual = blake3::hash(&data);
             ensure!(
                 actual == expected,
-                "{}: BLAKE3 mismatch, expected {expected}, got {actual}",
+                "{}: BLAKE3 mismatch\nexpected {expected}\ngot      {actual}",
                 self.path,
             );
             log::info!("verified {}", self.path);

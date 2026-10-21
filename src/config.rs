@@ -7,6 +7,7 @@
 //!
 //! ```text
 //! timeout 5
+//! firmware-setup yes
 //! default nixos
 //! folder nixos
 //!   name NixOS
@@ -22,7 +23,7 @@
 use alloc::{string::String, vec::Vec};
 use core::{fmt, str::Lines};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, ensure};
 use crate::esp::{self, FileRef};
 
 const PATH: &str = "\\EFI\\bread\\bread.conf";
@@ -34,6 +35,8 @@ pub struct Config {
     pub default: Option<String>,
     /// PSF2 font for the menu, instead of the built-in one.
     pub font: Option<FileRef>,
+    /// Offer rebooting into the firmware setup, if the firmware supports it.
+    pub firmware_setup: bool,
     pub entries: Vec<Entry>,
 }
 
@@ -50,6 +53,7 @@ impl Config {
             timeout: None,
             default: None,
             font: None,
+            firmware_setup: false,
             entries: Vec::new(),
         };
         while let Some((key, value)) = parser.next() {
@@ -61,11 +65,13 @@ impl Config {
                 }
                 "default" => config.default = Some(value.into()),
                 "font" => config.font = Some(parser.file(value)?),
+                "firmware-setup" => config.firmware_setup = parser.yes_no(value)?,
                 "linux" | "efi" | "folder" => config.entries.push(parser.entry(key, value)?),
                 "end" => return Err(parser.error("'end' outside an entry")),
                 _ => parser.unknown(key),
             }
         }
+        ensure!(!config.entries.is_empty(), "{PATH} has no entries");
         Ok(config)
     }
 }
@@ -168,6 +174,14 @@ impl<'a> Parser<'a> {
 
     fn file(&self, value: &str) -> Result<FileRef> {
         value.parse().map_err(|e| self.error(e))
+    }
+
+    fn yes_no(&self, value: &str) -> Result<bool> {
+        match value {
+            "yes" => Ok(true),
+            "no" => Ok(false),
+            _ => Err(self.error(format_args!("expected 'yes' or 'no', got '{value}'"))),
+        }
     }
 
     /// Unknown keys are skipped so an older bread can read a newer config.

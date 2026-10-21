@@ -1,11 +1,11 @@
 //! Starting another UEFI application from the ESP.
 
 use crate::config::Efi;
-use crate::error::{Context, Error, Result};
+use crate::error::{Context, Result};
 
-/// Loads and starts the application. Returns only on failure, including when
-/// the application exits back to bread.
-pub fn start(entry: &Efi) -> Result<!> {
+/// Loads and starts the application. Returns when the application exits:
+/// `Ok` if it exited with `SUCCESS` (e.g. the user left a UEFI shell).
+pub fn start(entry: &Efi) -> Result {
     let image = entry.path.read()?;
     let boot_services = effie::system_table().boot_services();
 
@@ -18,6 +18,6 @@ pub fn start(entry: &Efi) -> Result<!> {
     boot_services
         .start_image(handle)
         .context(format_args!("running {}", entry.path))?;
-
-    Err(Error::new(format_args!("{} exited", entry.path)))
+    log::info!("{} exited", entry.path);
+    Ok(())
 }

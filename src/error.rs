@@ -2,8 +2,9 @@
 //! when there is one.
 //!
 //! Everything that can fail before the kernel handoff returns [`Result`].
-//! `main` turns an error into a panic, so every failure ends on the same
-//! screen and in the same log file.
+//! Errors carry no "recoverable" flag: whoever catches one decides what
+//! happens next (see `main`), and shows it on an error screen, which also
+//! saves the log. A message may contain `\n` to break lines on that screen.
 
 use alloc::borrow::Cow;
 use alloc::string::String;

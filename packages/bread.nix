@@ -9,6 +9,8 @@
       "aarch64-unknown-uefi"
     else
       throw "bread: unsupported host platform ${pkgs.stdenv.hostPlatform.system}",
+  # Offer F2 (firmware setup) on the screen for a broken bread.conf.
+  configErrorFirmwareSetup ? true,
   ...
 }:
 
@@ -34,7 +36,9 @@ craneLib.buildPackage {
 
   strictDeps = true;
   doCheck = false;
-  cargoExtraArgs = "--locked --target ${cargoTarget}";
+  cargoExtraArgs =
+    "--locked --target ${cargoTarget}"
+    + lib.optionalString (!configErrorFirmwareSetup) " --no-default-features";
 
   installPhase = ''
     runHook preInstall

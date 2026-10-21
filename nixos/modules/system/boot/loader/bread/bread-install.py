@@ -155,7 +155,7 @@ def profile_entry(profile: str, gens: list[int]) -> dict:
 
 def conf_line(indent: str, key: str, value) -> str:
     # bread trims each line and reads a value to the end of it.
-    text = json.dumps(value) if isinstance(value, bool) else str(value)
+    text = ("yes" if value else "no") if isinstance(value, bool) else str(value)
     if value is None or isinstance(value, (dict, list)) or "\n" in text or text != text.strip():
         raise ValueError(f"bread.conf: cannot write {key} {json.dumps(value)}")
     return f"{indent}{key} {text}"
@@ -191,6 +191,8 @@ def install_bootloader() -> None:
     entries = [profile_entry(profile, gens) for profile, gens in profiles]
     conf = {
         "timeout": config["timeout"],
+        # Left out when null, so bread's own default applies.
+        "firmware-setup": config["firmwareSetup"],
         "default": "nixos",
         # The system profile's folder is the default entry, so always write it.
         "entries": [e for e in entries if e["id"] == "nixos" or e["entries"]] + config["extraEntries"],

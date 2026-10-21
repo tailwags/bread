@@ -41,7 +41,7 @@ let
       inherit (efi) efiSysMountPoint canTouchEfiVariables;
       efiBinary = "${cfg.package}/share/bread/bread.efi";
       inherit efiFile;
-      inherit (cfg) timeout font;
+      inherit (cfg) timeout font firmwareSetup;
       maxGenerations = if cfg.maxGenerations == null then 0 else cfg.maxGenerations;
       efiRemovable = cfg.efiInstallAsRemovable;
       extraEntries = allExtraEntries;
@@ -105,7 +105,26 @@ in
       example = lib.literalExpression "./terminus32.psf";
       description = ''
         Path to a PSF2 font file to use in the boot menu.
-        {val}`null` uses the built-in 8×16 Terminus font embedded in bread.
+        {val}`null` uses the built-in 6×13 Cozette font embedded in bread.
+      '';
+    };
+
+    firmwareSetup = lib.mkOption {
+      type = lib.types.nullOr lib.types.bool;
+      default = null;
+      example = true;
+      description = ''
+        Whether the boot menu and its error screens offer rebooting into the
+        firmware's setup UI with the F2 key. Only offered when the firmware
+        supports it. {val}`null` leaves the choice to bread, which defaults to
+        no.
+
+        The screen for a broken {file}`bread.conf` cannot read this option, so
+        it offers F2 whenever the bread package was built with its
+        `configErrorFirmwareSetup` argument (the default). To never offer it,
+        for example on a locked-down machine, use
+        `pkgs.bread.override { configErrorFirmwareSetup = false; }` as
+        {option}`boot.loader.bread.package`.
       '';
     };
 

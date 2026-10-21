@@ -11,6 +11,7 @@
         timeout = 5;
         rememberLast = false;
         maxGenerations = 5;
+        firmwareSetup = true;
       };
     };
   };

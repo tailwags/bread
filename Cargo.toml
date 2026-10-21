@@ -9,8 +9,8 @@ readme = "README.md"
 publish = false
 
 [dependencies]
-effie = { version = "0.2.0", features = ["log"] }
-effie-log = { version = "0.2.0" }
+effie = { version = "0.2.1", features = ["log"] }
+effie-log = { version = "0.2.1" }
 log = { version = "0.4", default-features = false, features = [
     "release_max_level_info",
 ] }
@@ -20,6 +20,12 @@ linux-raw-sys = { version = "0.12.1", default-features = false, features = [
     "image",
 ] }
 blake3 = { version = "1.8.7", default-features = false, features = ["pure"] }
+
+[features]
+default = ["config-error-firmware-setup"]
+# Offer F2 (reboot into the firmware setup) on the config-error screen. Without
+# it, the only way out of a broken bread.conf is the firmware's own hotkeys.
+config-error-firmware-setup = []
 
 [profile.release]
 lto = true

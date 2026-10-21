@@ -1,6 +1,10 @@
 //! Booting Linux through its native boot protocol rather than the EFI stub.
 //! bread places the kernel, initrd and boot information in memory itself,
 //! exits boot services and jumps to the kernel.
+//!
+//! Booting is split at the point of no return: [`prepare`] does everything
+//! that can fail and still go back to the menu, and [`Prepared::start`]
+//! everything after.
 
 #[cfg(target_arch = "aarch64")]
 mod aarch64;
@@ -20,13 +24,21 @@ use crate::config::Linux;
 use crate::error::{Context, Result};
 use crate::esp::FileRef;
 
+pub use arch::Prepared;
+
 const PAGE_SIZE: usize = 4096;
 
-/// Loads and starts the kernel. Returns only if something fails before the
-/// kernel has control.
-pub fn boot(entry: &Linux) -> Result<!> {
+/// Reads and verifies the kernel and initrd, and places them and the boot
+/// information in memory. Then [`Prepared::start`] boots.
+///
+/// Every file is read and verified before any page is allocated, so the
+/// common failures (a missing file, a digest mismatch) leak nothing. Pages
+/// allocated before a later failure (a bad image, an allocation that does not
+/// fit) are never freed. That is harmless while the only ways on from a
+/// failure are the menu and a reboot.
+pub fn prepare(entry: &Linux) -> Result<Prepared> {
     let kernel = entry.kernel.read()?;
-    arch::boot(entry, &kernel)
+    arch::prepare(entry, &kernel)
 }
 
 /// Where [`alloc_pages`] may put memory.
@@ -108,13 +120,17 @@ fn load_initrd(parts: &[FileRef], placement: Placement) -> Result<Option<&'stati
 }
 
 /// Stops serial logging and exits boot services. After this nothing may
-/// allocate, and the returned map must not be dropped.
-fn exit_boot_services() -> Result<ManuallyDrop<MemoryMap>> {
+/// allocate, and the returned map must not be dropped. Nothing can be undone
+/// at this point, so a failure panics.
+fn exit_boot_services() -> ManuallyDrop<MemoryMap> {
     log::info!("exiting boot services");
     // Logging must not call firmware between fetching the memory map and
     // exiting, or the map would change and the exit fail.
     effie_log::detach();
     // SAFETY: bread is its own image, and nothing is used after this that
     // needs boot services.
-    unsafe { effie::exit_boot_services() }.context("exiting boot services")
+    match unsafe { effie::exit_boot_services() } {
+        Ok(map) => map,
+        Err(status) => panic!("exiting boot services: {status}"),
+    }
 }

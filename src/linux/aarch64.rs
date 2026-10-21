@@ -16,7 +16,12 @@ const MAGIC: u32 = 0x644d_5241;
 /// The image goes `text_offset` bytes past a 2 MiB aligned base.
 const BASE_ALIGN: usize = 2 << 20;
 
-pub fn boot(entry: &Linux, image: &[u8]) -> Result<!> {
+pub struct Prepared {
+    kernel_entry: usize,
+    fdt: usize,
+}
+
+pub fn prepare(entry: &Linux, image: &[u8]) -> Result<Prepared> {
     ensure!(
         image.len() >= size_of::<arm64_image_header>(),
         "kernel image is too small"
@@ -54,10 +59,17 @@ pub fn boot(entry: &Linux, image: &[u8]) -> Result<!> {
         .ok_or_else(|| Error::new("no device tree in the UEFI configuration tables"))?;
     let kernel_entry = kernel.as_ptr() as usize;
     log::info!("kernel entry {kernel_entry:#x}, device tree {fdt:#x}");
-    let _map = exit_boot_services()?;
+    Ok(Prepared { kernel_entry, fdt })
+}
 
-    // SAFETY: the kernel is in place and written back to memory.
-    unsafe { enter_kernel(kernel_entry, fdt) }
+impl Prepared {
+    /// Exits boot services and jumps to the kernel.
+    pub fn start(self) -> ! {
+        let _map = exit_boot_services();
+
+        // SAFETY: the kernel is in place and written back to memory.
+        unsafe { enter_kernel(self.kernel_entry, self.fdt) }
+    }
 }
 
 /// Cleans and invalidates `data` in the data cache, so the kernel still sees

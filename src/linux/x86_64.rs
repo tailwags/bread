@@ -1,7 +1,7 @@
 //! The x86-64 Linux boot protocol, entering through the kernel's 64-bit
 //! entry point. See Documentation/arch/x86/boot.rst.
 
-use core::mem::size_of;
+use core::{mem::size_of, ptr};
 
 use effie::protocols::{GopPixelFormat, GraphicsOutput};
 use effie::tables::{MemoryMap, MemoryType};
@@ -29,7 +29,12 @@ const VIDEO_TYPE_EFI: u8 = 0x70;
 const VIDEO_CAPABILITY_SKIP_QUIRKS: u32 = 1 << 0;
 const VIDEO_CAPABILITY_64BIT_BASE: u32 = 1 << 1;
 
-pub fn boot(entry: &Linux, image: &[u8]) -> Result<!> {
+pub struct Prepared {
+    kernel_entry: usize,
+    boot_params: &'static mut boot_params,
+}
+
+pub fn prepare(entry: &Linux, image: &[u8]) -> Result<Prepared> {
     let hdr = read_header(image)?;
     let above_4g = if hdr.xloadflags & XLF_CAN_BE_LOADED_ABOVE_4G != 0 {
         Placement::Anywhere
@@ -64,29 +69,40 @@ pub fn boot(entry: &Linux, image: &[u8]) -> Result<!> {
     }
     describe_framebuffer(&mut bp.screen_info);
 
-    let system_table = st as *const _ as u64;
     log::info!(
         "kernel entry {kernel_entry:#x}, boot_params {:#x}",
-        zero_page.as_ptr() as usize
+        ptr::from_ref(bp) as usize
     );
-    let map = exit_boot_services()?;
+    Ok(Prepared {
+        kernel_entry,
+        boot_params: bp,
+    })
+}
 
-    // Boot services are gone: no allocating and no logging from here on.
-    fill_e820(bp, &map);
-    let memmap = map.buffer.as_ptr() as u64;
-    bp.efi_info = efi_info {
-        efi_loader_signature: u32::from_le_bytes(*b"EL64"),
-        efi_systab: system_table as u32,
-        efi_systab_hi: (system_table >> 32) as u32,
-        efi_memmap: memmap as u32,
-        efi_memmap_hi: (memmap >> 32) as u32,
-        efi_memmap_size: map.buffer.len() as u32,
-        efi_memdesc_size: map.descriptor_size as u32,
-        efi_memdesc_version: map.descriptor_version,
-    };
+impl Prepared {
+    /// Exits boot services and jumps to the kernel.
+    pub fn start(self) -> ! {
+        let bp = self.boot_params;
+        let system_table = ptr::from_ref(effie::system_table()) as u64;
+        let map = exit_boot_services();
 
-    // SAFETY: the kernel, its boot information and the memory map are all in place.
-    unsafe { enter_kernel(kernel_entry, zero_page.as_ptr() as usize) }
+        // Boot services are gone: no allocating and no logging from here on.
+        fill_e820(bp, &map);
+        let memmap = map.buffer.as_ptr() as u64;
+        bp.efi_info = efi_info {
+            efi_loader_signature: u32::from_le_bytes(*b"EL64"),
+            efi_systab: system_table as u32,
+            efi_systab_hi: (system_table >> 32) as u32,
+            efi_memmap: memmap as u32,
+            efi_memmap_hi: (memmap >> 32) as u32,
+            efi_memmap_size: map.buffer.len() as u32,
+            efi_memdesc_size: map.descriptor_size as u32,
+            efi_memdesc_version: map.descriptor_version,
+        };
+
+        // SAFETY: the kernel, its boot information and the memory map are all in place.
+        unsafe { enter_kernel(self.kernel_entry, ptr::from_mut(bp) as usize) }
+    }
 }
 
 fn read_header(image: &[u8]) -> Result<setup_header> {

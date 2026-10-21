@@ -7,66 +7,22 @@ use effie::protocols::{BltPixel, InputKey, SimpleTextInput};
 use effie::{Protocol, WString};
 
 use super::canvas::Canvas;
+use super::{ACCENT, BACKGROUND, BAR, BAR_PADDING, DIM, MARGIN, RULE, TEXT};
 use crate::config::{Config, Entry, Kind};
 use crate::error::{Context, Result};
 
-/// Returns the entry to boot: the one the user picks, or the default entry
-/// once the timeout runs out. Never returns a folder.
-pub fn run(config: &Config, mut canvas: Option<Canvas>) -> Result<&Entry> {
-    let mut con_in = effie::system_table()
-        .con_in()
-        .context("opening the console input")?;
-    let mut menu = Menu::new(config);
-    let mut countdown = config.timeout;
-
-    loop {
-        let rows = menu.rows();
-        let entry = rows[menu.selected].entry;
-        match &mut canvas {
-            Some(canvas) => draw(canvas, &rows, menu.selected, &mut menu.scroll, countdown),
-            None => print(&rows, menu.selected, countdown),
-        }
-
-        let key = match countdown {
-            Some(0) if !is_folder(entry) => {
-                log::info!("timeout, booting '{}'", entry.name);
-                return Ok(entry);
-            }
-            Some(0) => {
-                countdown = None;
-                continue;
-            }
-            Some(seconds) => match key_within_a_second(&mut con_in) {
-                Some(key) => {
-                    countdown = None;
-                    key
-                }
-                None => {
-                    countdown = Some(seconds - 1);
-                    continue;
-                }
-            },
-            None => wait_for_key(&mut con_in)?,
-        };
-
-        match key.scan_code {
-            InputKey::SCAN_UP => menu.selected = menu.selected.saturating_sub(1),
-            InputKey::SCAN_DOWN => menu.selected = (menu.selected + 1).min(rows.len() - 1),
-            InputKey::SCAN_NULL if key.unicode_char == u16::from(b'\r') => {
-                if is_folder(entry) {
-                    menu.toggle(entry);
-                } else {
-                    log::info!("selected '{}'", entry.name);
-                    return Ok(entry);
-                }
-            }
-            _ => {}
-        }
-    }
+/// What the user picked.
+pub enum Choice<'a> {
+    /// Never a folder.
+    Boot(&'a Entry),
+    FirmwareSetup,
 }
 
-struct Menu<'a> {
+/// The menu's state: open folders and the selection outlive [`Menu::run`],
+/// so after a failed boot the menu comes back as the user left it.
+pub struct Menu<'a> {
     entries: &'a [Entry],
+    firmware_setup: bool,
     /// Expanded folders, compared by address.
     open: Vec<&'a Entry>,
     /// Index into [`Menu::rows`].
@@ -83,9 +39,11 @@ struct Row<'a> {
 }
 
 impl<'a> Menu<'a> {
-    fn new(config: &'a Config) -> Self {
+    /// `firmware_setup` enables F2 for rebooting into the firmware setup.
+    pub fn new(config: &'a Config, firmware_setup: bool) -> Self {
         let mut menu = Self {
             entries: &config.entries,
+            firmware_setup,
             open: Vec::new(),
             selected: 0,
             scroll: 0,
@@ -98,6 +56,72 @@ impl<'a> Menu<'a> {
                 .unwrap_or(0);
         }
         menu
+    }
+
+    /// Returns what to do: the entry the user picks, the selected entry once
+    /// `timeout` seconds pass without a key, or the firmware setup on F2.
+    pub fn run(
+        &mut self,
+        mut canvas: Option<&mut Canvas>,
+        timeout: Option<u32>,
+    ) -> Result<Choice<'a>> {
+        let mut con_in = effie::system_table()
+            .con_in()
+            .context("opening the console input")?;
+        let mut countdown = timeout;
+
+        loop {
+            let rows = self.rows();
+            let entry = rows[self.selected].entry;
+            match &mut canvas {
+                Some(canvas) => draw(
+                    canvas,
+                    &rows,
+                    self.selected,
+                    &mut self.scroll,
+                    countdown,
+                    self.firmware_setup,
+                ),
+                None => print(&rows, self.selected, countdown, self.firmware_setup),
+            }
+
+            let key = match countdown {
+                Some(0) if !is_folder(entry) => {
+                    log::info!("timeout, booting '{}'", entry.name);
+                    return Ok(Choice::Boot(entry));
+                }
+                Some(0) => {
+                    countdown = None;
+                    continue;
+                }
+                Some(seconds) => match key_within_a_second(&mut con_in) {
+                    Some(key) => {
+                        countdown = None;
+                        key
+                    }
+                    None => {
+                        countdown = Some(seconds - 1);
+                        continue;
+                    }
+                },
+                None => wait_for_key(&mut con_in)?,
+            };
+
+            match key.scan_code {
+                InputKey::SCAN_UP => self.selected = self.selected.saturating_sub(1),
+                InputKey::SCAN_DOWN => self.selected = (self.selected + 1).min(rows.len() - 1),
+                InputKey::SCAN_F2 if self.firmware_setup => return Ok(Choice::FirmwareSetup),
+                InputKey::SCAN_NULL if key.unicode_char == u16::from(b'\r') => {
+                    if is_folder(entry) {
+                        self.toggle(entry);
+                    } else {
+                        log::info!("selected '{}'", entry.name);
+                        return Ok(Choice::Boot(entry));
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Finds the default entry and opens the folders leading to it. When the
@@ -143,7 +167,11 @@ impl<'a> Menu<'a> {
     fn push_rows(&self, entries: &'a [Entry], depth: usize, rows: &mut Vec<Row<'a>>) {
         for entry in entries {
             let open = self.is_open(entry);
-            rows.push(Row { entry, depth, open });
+            rows.push(Row {
+                entry,
+                depth,
+                open,
+            });
             if open && let Kind::Folder(folder) = &entry.kind {
                 self.push_rows(&folder.entries, depth + 1, rows);
             }
@@ -199,27 +227,17 @@ fn key_within_a_second(con_in: &mut Protocol<SimpleTextInput>) -> Option<InputKe
 
 // Graphical menu
 
-const BACKGROUND: BltPixel = BltPixel::new(18, 12, 6);
-const BAR: BltPixel = BltPixel::new(26, 17, 8);
-const RULE: BltPixel = BltPixel::new(42, 28, 12);
-const TEXT: BltPixel = BltPixel::new(205, 185, 150);
-const DIM: BltPixel = BltPixel::new(105, 84, 58);
-const ACCENT: BltPixel = BltPixel::new(230, 170, 55);
-
-const MARGIN: usize = 20;
-/// Vertical padding around the text in the header and footer bars.
-const BAR_PADDING: usize = 12;
-
 fn draw(
     canvas: &mut Canvas,
     rows: &[Row],
     selected: usize,
     scroll: &mut usize,
     countdown: Option<u32>,
+    firmware_setup: bool,
 ) {
     canvas.clear(BACKGROUND);
     let top = draw_header(canvas);
-    let bottom = draw_footer(canvas, countdown);
+    let bottom = draw_footer(canvas, countdown, firmware_setup);
     draw_list(canvas, rows, selected, scroll, top, bottom);
     canvas.flush();
 }
@@ -248,14 +266,14 @@ fn draw_header(canvas: &mut Canvas) -> usize {
 }
 
 /// Draws the key help bar and returns the y of its top edge.
-fn draw_footer(canvas: &mut Canvas, countdown: Option<u32>) -> usize {
+fn draw_footer(canvas: &mut Canvas, countdown: Option<u32>, firmware_setup: bool) -> usize {
     let height = canvas.font.height + 2 * BAR_PADDING;
     let top = canvas.height.saturating_sub(height + 1);
     let y = top + 1 + BAR_PADDING;
     canvas.fill(0, top, canvas.width, 1, RULE);
     canvas.fill(0, top + 1, canvas.width, height, BAR);
 
-    spans(
+    let x = spans(
         canvas,
         MARGIN,
         y,
@@ -266,6 +284,9 @@ fn draw_footer(canvas: &mut Canvas, countdown: Option<u32>) -> usize {
             ("  navigate", DIM),
         ],
     );
+    if firmware_setup {
+        spans(canvas, x, y, &[("    F2", TEXT), ("  firmware setup", DIM)]);
+    }
 
     if let Some(seconds) = countdown {
         let message = format!("Booting in {seconds}s");
@@ -323,14 +344,15 @@ fn draw_list(
     for (i, row) in visible.iter().enumerate() {
         let x = left + 10 + 2 * row.depth * glyph_width;
         let y = list_top + i * pitch + ROW_PADDING;
-        let marker = match (&row.entry.kind, row.open) {
-            (Kind::Folder(_), false) => "+ ",
-            (Kind::Folder(_), true) => "- ",
+        let marker = match (is_folder(row.entry), row.open) {
+            (true, false) => "+ ",
+            (true, true) => "- ",
             _ => "  ",
         };
+        let name = &row.entry.name;
 
         let (fg, bg) = if *scroll + i == selected {
-            let width = canvas.font.text_width(marker) + canvas.font.text_width(&row.entry.name);
+            let width = canvas.font.text_width(marker) + canvas.font.text_width(name);
             canvas.fill(
                 x.saturating_sub(8),
                 y.saturating_sub(3),
@@ -339,13 +361,12 @@ fn draw_list(
                 ACCENT,
             );
             (BACKGROUND, ACCENT)
-        } else if is_folder(row.entry) {
-            (ACCENT, BACKGROUND)
         } else {
-            (TEXT, BACKGROUND)
+            let fg = if is_folder(row.entry) { ACCENT } else { TEXT };
+            (fg, BACKGROUND)
         };
         let x = canvas.text(x, y, marker, fg, bg);
-        canvas.text(x, y, &row.entry.name, fg, bg);
+        canvas.text(x, y, name, fg, bg);
     }
 
     if *scroll + visible.len() < rows.len() {
@@ -362,7 +383,7 @@ const NORMAL: usize = 0x07;
 const BRIGHT: usize = 0x0F;
 const INVERTED: usize = 0x70;
 
-fn print(rows: &[Row], selected: usize, countdown: Option<u32>) {
+fn print(rows: &[Row], selected: usize, countdown: Option<u32>, firmware_setup: bool) {
     let Ok(mut out) = effie::system_table().con_out() else {
         return;
     };
@@ -376,17 +397,21 @@ fn print(rows: &[Row], selected: usize, countdown: Option<u32>) {
     line(BRIGHT, concat!("  bread  v", env!("CARGO_PKG_VERSION")));
     line(NORMAL, "");
     for (i, row) in rows.iter().enumerate() {
-        let marker = match (&row.entry.kind, row.open) {
-            (Kind::Folder(_), false) => "  [+]",
-            (Kind::Folder(_), true) => "  [-]",
+        let marker = match (is_folder(row.entry), row.open) {
+            (true, false) => "  [+]",
+            (true, true) => "  [-]",
             _ => "",
         };
+        let name = &row.entry.name;
         let indent = 2 * (row.depth + 1);
-        let text = format!("{:indent$}{}{marker}", "", row.entry.name);
+        let text = format!("{:indent$}{name}{marker}", "");
         line(if i == selected { INVERTED } else { NORMAL }, &text);
     }
     line(NORMAL, "");
     line(NORMAL, "  UP / DOWN  navigate    ENTER  boot / open");
+    if firmware_setup {
+        line(NORMAL, "  F2  firmware setup");
+    }
     if let Some(seconds) = countdown {
         line(NORMAL, &format!("  Booting in {seconds}s"));
     }
