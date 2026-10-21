@@ -56,6 +56,23 @@
         }
       );
 
+      checks = eachSystem (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          # The license texts are copied to the root so that GitHub can find
+          # them; keep the copies identical to LICENSES/.
+          license-copies = pkgs.runCommand "bread-license-copies" { } ''
+            cd ${self}
+            cmp LICENSES/EUPL-1.2.txt LICENSE-EUPL
+            cmp LICENSES/MIT.txt LICENSE-MIT
+            touch $out
+          '';
+        }
+      );
+
       devShells = eachSystem (
         system:
         let

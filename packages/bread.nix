@@ -41,4 +41,6 @@ craneLib.buildPackage {
     install -Dm644 target/${cargoTarget}/release/bread.efi $out/share/bread/bread.efi
     runHook postInstall
   '';
+
+  meta.license = lib.licenses.eupl12;
 }

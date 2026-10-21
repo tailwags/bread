@@ -155,6 +155,19 @@ format.
 
 ## License
 
-This project is licensed under the
-[APACHE-2.0 LICENSE](http://www.apache.org/licenses/LICENSE-2.0). You can find
-more info in the [LICENSE](LICENSE) file.
+Bread is licensed under the [EUPL-1.2 License](LICENSE-EUPL). All earlier
+versions of this project, previously published under the Apache-2.0 License, are
+hereby also made available under the EUPL-1.2.
+
+The Nix packaging and the NixOS module (`flake.nix`, `flake.lock`, `.envrc`,
+`packages/`, `nixos/` and `vm/`) are licensed under the
+[MIT License](LICENSE-MIT).
+
+The built-in font, `src/ui/cozette.psf`, is
+a custom build of [Cozette](https://github.com/the-moonwitch/Cozette), copyright
+2020 Samhain and contributors, and is licensed under the MIT License. It is
+embedded in `bread.efi`.
+
+The licensing of every file is recorded in [REUSE.toml](REUSE.toml), following
+the [REUSE](https://reuse.software) specification; the license texts are in
+[LICENSES/](LICENSES).
