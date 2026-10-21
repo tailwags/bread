@@ -41,7 +41,7 @@ let
       inherit (efi) efiSysMountPoint canTouchEfiVariables;
       efiBinary = "${cfg.package}/share/bread/bread.efi";
       inherit efiFile;
-      inherit (cfg) timeout font firmwareSetup;
+      inherit (cfg) timeout font firmwareSetup additionalFiles;
       maxGenerations = if cfg.maxGenerations == null then 0 else cfg.maxGenerations;
       efiRemovable = cfg.efiInstallAsRemovable;
       extraEntries = allExtraEntries;
@@ -139,6 +139,22 @@ in
       '';
     };
 
+    additionalFiles = lib.mkOption {
+      type = lib.types.attrsOf lib.types.path;
+      default = { };
+      example = lib.literalExpression ''
+        { "memtest86/memtest.efi" = pkgs.memtest86plus.efi; }
+      '';
+      description = ''
+        Files to copy to the ESP, under {file}`EFI/bread/files`. Each name is a
+        path relative to that directory, using forward slashes. Files there that
+        are no longer listed are removed.
+
+        Refer to them from {option}`extraEntries` with their ESP path, for
+        example {file}`\EFI\bread\files\memtest86\memtest.efi`.
+      '';
+    };
+
     extraEntries = lib.mkOption {
       type = lib.types.listOf (
         lib.types.submodule {
@@ -221,7 +237,15 @@ in
         assertion = builtins.hasAttr arch efiFileForArch;
         message = "boot.loader.bread: unsupported architecture '${arch}'. Supported: ${lib.concatStringsSep ", " (builtins.attrNames efiFileForArch)}.";
       }
-    ];
+    ]
+    ++ map (name: {
+      # Empty, "." and ".." components would place the file outside EFI/bread/files
+      # or collide with the directory itself.
+      assertion =
+        !lib.hasInfix "\\" name
+        && lib.all (c: !lib.elem c [ "" "." ".." ]) (lib.splitString "/" name);
+      message = "boot.loader.bread.additionalFiles: '${name}' must be a relative path with forward slashes and no empty, '.' or '..' components.";
+    }) (builtins.attrNames cfg.additionalFiles);
 
     boot.loader.grub.enable = lib.mkDefault false;
     boot.loader.supportsInitrdSecrets = true;

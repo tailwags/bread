@@ -12,6 +12,16 @@
         rememberLast = false;
         maxGenerations = 5;
         firmwareSetup = true;
+
+        additionalFiles."memtest86/memtest.efi" = pkgs.memtest86plus.efi;
+        extraEntries = [
+          {
+            type = "efi";
+            id = "memtest";
+            name = "Memtest86+";
+            path = "\\EFI\\bread\\files\\memtest86\\memtest.efi";
+          }
+        ];
       };
     };
   };

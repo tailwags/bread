@@ -18,6 +18,7 @@ config = json.load(open("@configPath@"))
 esp = config["efiSysMountPoint"]
 bread_dir = os.path.join(esp, "EFI", "bread")
 kernels_dir = os.path.join(bread_dir, "kernels")
+files_dir = os.path.join(bread_dir, "files")
 present: set[str] = set()
 kept: set[str] = set()
 
@@ -74,6 +75,29 @@ def copy_kernel(path: str) -> str:
         present.add(name)
     kept.add(name)
     return f"\\EFI\\bread\\kernels\\{name}"
+
+
+def copy_additional_files() -> set[str]:
+    """Copy boot.loader.bread.additionalFiles to EFI/bread/files and return
+    their destinations, lowercased: the ESP is FAT, so names that only differ
+    in case are the same file."""
+    copied = set()
+    for name, src in config["additionalFiles"].items():
+        if not os.path.isfile(src):
+            sys.exit(f"error: boot.loader.bread.additionalFiles: {src} (for {name}) is not a file")
+        dst = os.path.join(files_dir, *name.split("/"))
+        copy_file(src, dst)
+        copied.add(dst.lower())
+    return copied
+
+
+def remove_unlisted_files(keep: set[str]) -> None:
+    for root, _, names in os.walk(files_dir, topdown=False):
+        for name in names:
+            if os.path.join(root, name).lower() not in keep:
+                os.remove(os.path.join(root, name))
+        if root != files_dir and not os.listdir(root):
+            os.rmdir(root)
 
 
 def config_entry(entry_id: str, boot_json: dict, label: str) -> dict:
@@ -177,8 +201,8 @@ def to_conf(fields: dict, indent: str = "") -> list[str]:
 
 
 def install_bootloader() -> None:
-    # Only EFI/bread/kernels is garbage-collected: EFI/bread also holds
-    # bread.log, which bread itself writes.
+    # Only EFI/bread/kernels and EFI/bread/files are garbage-collected:
+    # EFI/bread also holds bread.log, which bread itself writes.
     os.makedirs(kernels_dir, exist_ok=True)
     present.update(os.listdir(kernels_dir))
 
@@ -189,6 +213,7 @@ def install_bootloader() -> None:
                  "refusing to remove all boot loader entries")
 
     entries = [profile_entry(profile, gens) for profile, gens in profiles]
+    additional_files = copy_additional_files()
     conf = {
         "timeout": config["timeout"],
         # Left out when null, so bread's own default applies.
@@ -255,6 +280,7 @@ def install_bootloader() -> None:
     print("removing unused boot files...")
     for name in present - kept:
         os.remove(os.path.join(kernels_dir, name))
+    remove_unlisted_files(additional_files)
 
 
 def main() -> None:
