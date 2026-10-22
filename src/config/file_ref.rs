@@ -25,7 +25,7 @@ impl FileRef {
         if let Some(expected) = self.blake3 {
             let actual = blake3::hash(&data);
             ensure!(
-                actual == expected,
+                actual.as_bytes() == expected.as_bytes(),
                 "{}: BLAKE3 mismatch\nexpected {expected}\ngot      {actual}",
                 self.path,
             );
