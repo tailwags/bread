@@ -105,7 +105,9 @@ in
       example = lib.literalExpression "./terminus32.psf";
       description = ''
         Path to a PSF2 font file to use in the boot menu.
-        {val}`null` uses the built-in 6×13 Cozette font embedded in bread.
+        {val}`null` uses the built-in 6×13 Cozette font embedded in bread,
+        which only covers Latin-1. A font with a unicode table can cover
+        any characters it has glyphs for.
       '';
     };
 

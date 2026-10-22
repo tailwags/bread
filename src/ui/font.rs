@@ -18,7 +18,8 @@ const HAS_UNICODE_TABLE: usize = 1;
 const SEQUENCE: u8 = 0xFE;
 const END: u8 = 0xFF;
 
-/// The built-in font (Cozette, 6×13), checked at compile time.
+/// The built-in font (Cozette 6×13, Latin-1 subset), checked at compile time.
+/// It has no unicode table: glyph indices are code points U+0000–U+00FF.
 pub const EMBEDDED: Font = match Font::parse(include_bytes!("cozette.psf")) {
     Ok(font) => font,
     Err(_) => panic!("the embedded font is not a valid PSF2 font"),
@@ -121,12 +122,15 @@ impl Font {
                 0
             };
         }
+        let mut buf = [0; 4];
+        let needle = c.encode_utf8(&mut buf).as_bytes();
         self.unicode
             .split(|&b| b == END)
             .take(self.glyph_count)
             .position(|entry| {
                 let single = entry.split(|&b| b == SEQUENCE).next().unwrap_or_default();
-                core::str::from_utf8(single).is_ok_and(|chars| chars.contains(c))
+                // UTF-8 is self-synchronising, so a byte match is a character match.
+                single.windows(needle.len()).any(|bytes| bytes == needle)
             })
             .unwrap_or(0)
     }
