@@ -125,6 +125,7 @@ show up in a folder under their generation.
 | `boot.loader.bread.efiInstallAsRemovable` | `false` | Install to `EFI/BOOT/BOOT<ARCH>.EFI` and skip registering a boot entry with efibootmgr.       |
 | `boot.loader.bread.extraEntries`       | `[ ]`   | Extra `linux` or `efi` entries, added after the NixOS ones.                                       |
 | `boot.loader.bread.extraEntriesAttrs`  | `[ ]`   | Extra entries as raw attribute sets, for folders or anything `extraEntries` does not cover.       |
+| `boot.loader.bread.additionalFiles`    | `{ }`   | Files to copy to `\EFI\bread\files`, keyed by their path there. Unlisted files are removed.       |
 | `boot.loader.bread.rememberLast`       | `false` | Accepted, but not implemented yet.                                                                |
 
 ### Chainloading another OS
@@ -147,6 +148,28 @@ example, for Windows:
 
 Paths are relative to the ESP Bread was loaded from and use backslashes.
 
+### Extra EFI tools
+
+EFI applications from the Nix store, such as Memtest86+, can be copied to the
+ESP with `additionalFiles` and then added as `efi` entries:
+
+```nix
+{
+  boot.loader.bread = {
+    additionalFiles."memtest86/memtest.efi" = pkgs.memtest86plus.efi;
+
+    extraEntries = [
+      {
+        type = "efi";
+        id = "memtest";
+        name = "Memtest86+";
+        path = "\\EFI\\bread\\files\\memtest86\\memtest.efi";
+      }
+    ];
+  };
+}
+```
+
 ## Configuring
 
 On NixOS the config is generated for you. Elsewhere, write
@@ -166,7 +189,8 @@ The Nix packaging and the NixOS module (`flake.nix`, `flake.lock`, `.envrc`,
 The built-in font, `src/ui/cozette.psf`, is
 a custom build of [Cozette](https://github.com/the-moonwitch/Cozette), copyright
 2020 Samhain and contributors, and is licensed under the MIT License. It is
-embedded in `bread.efi`.
+embedded in `bread.efi`, subset to Latin-1 (U+0000–U+00FF) to keep the binary
+small.
 
 The licensing of every file is recorded in [REUSE.toml](REUSE.toml), following
 the [REUSE](https://reuse.software) specification; the license texts are in
