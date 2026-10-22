@@ -67,9 +67,9 @@ impl Config {
         while let Some((key, value)) = parser.next() {
             match key {
                 "timeout" => {
-                    let timeout = value.parse();
+                    let timeout = value.parse().ok();
                     config.timeout =
-                        Some(timeout.map_err(|e| parser.error(format_args!("timeout: {e}")))?);
+                        Some(timeout.ok_or_else(|| parser.error("timeout: expected seconds"))?);
                 }
                 "default" => config.default = Some(value.into()),
                 "font" => config.font = Some(parser.file(value)?),
