@@ -10,10 +10,11 @@ mod tree;
 use effie::protocols::InputKey;
 
 use self::tree::{Tree, is_folder};
-use crate::config::{Config, Entry};
-use crate::error::{Context, Result};
-use crate::ui::canvas::Canvas;
-use crate::ui::input;
+use crate::{
+    config::{Config, Entry},
+    error::{Context, Result},
+    ui::{canvas::Canvas, input},
+};
 
 /// What the user picked.
 pub enum Choice<'a> {

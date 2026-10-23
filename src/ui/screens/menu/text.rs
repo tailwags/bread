@@ -3,12 +3,12 @@
 use alloc::format;
 
 use super::tree::{Row, is_folder};
-use crate::ui::console;
-use crate::ui::theme::MENU;
+use crate::ui::{console, theme::MENU};
 
 /// Black on light grey, for the selected entry.
 const INVERTED: usize = 0x70;
 
+/// Prints the header, the entries and the key hints.
 pub fn print(rows: &[Row], selected: usize, countdown: Option<u32>, firmware_setup: bool) {
     let Ok(mut out) = effie::system_table().con_out() else {
         return;

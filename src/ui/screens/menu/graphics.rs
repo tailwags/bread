@@ -3,10 +3,13 @@
 use alloc::format;
 
 use super::tree::{Row, is_folder};
-use crate::ui::canvas::Canvas;
-use crate::ui::chrome;
-use crate::ui::theme::{MARGIN, MENU};
+use crate::ui::{
+    canvas::Canvas,
+    chrome,
+    theme::{MARGIN, MENU},
+};
 
+/// Draws the header, the entries and the key hints, and flushes the frame.
 pub fn draw(
     canvas: &mut Canvas,
     rows: &[Row],

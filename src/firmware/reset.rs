@@ -1,8 +1,11 @@
 //! Rebooting, and rebooting into the firmware's own setup UI through the
 //! `OsIndications` variable (UEFI specification §8.5.4).
 
-use effie::tables::{ResetType, VariableAttributes};
-use effie::{Guid, Status, WStr, guid, w};
+use effie::{
+    Guid, Status, WStr, guid,
+    tables::{ResetType, VariableAttributes},
+    w,
+};
 
 use crate::error::{Context, Result};
 

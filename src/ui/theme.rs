@@ -40,6 +40,7 @@ pub const CRASH: Palette = Palette {
     console_bright: 0x4F,
 };
 
+/// Margin around the content of every screen, in pixels.
 pub const MARGIN: usize = 20;
 /// Vertical padding around the text in the header and footer bars.
 pub const BAR_PADDING: usize = 12;

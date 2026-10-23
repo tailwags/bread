@@ -2,8 +2,10 @@
 
 use effie::protocols::BltPixel;
 
-use super::surface::Surface;
-use super::theme::{BAR_PADDING, MARGIN, Palette};
+use super::{
+    surface::Surface,
+    theme::{BAR_PADDING, MARGIN, Palette},
+};
 
 /// Draws the title bar and returns the y just below it.
 pub fn header(surface: &mut impl Surface, palette: &Palette) -> usize {

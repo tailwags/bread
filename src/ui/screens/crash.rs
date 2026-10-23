@@ -3,11 +3,15 @@
 
 use effie::tables::{BootServices, ResetType, SystemTable};
 
-use crate::logfile;
-use crate::ui::font::EMBEDDED;
-use crate::ui::input;
-use crate::ui::report::{self, Report};
-use crate::ui::theme;
+use crate::{
+    logfile,
+    ui::{
+        font::EMBEDDED,
+        input,
+        report::{self, Report},
+        theme,
+    },
+};
 
 /// Saves the log, shows `body` and reboots on any key. Returns if there is
 /// no keyboard.

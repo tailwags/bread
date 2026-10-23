@@ -2,11 +2,12 @@
 
 use alloc::{vec, vec::Vec};
 
-use effie::Protocol;
-use effie::protocols::{BltPixel, GraphicsOutput};
+use effie::{
+    Protocol,
+    protocols::{BltPixel, GraphicsOutput},
+};
 
-use super::font::Font;
-use super::surface::Surface;
+use super::{font::Font, surface::Surface};
 use crate::firmware::video::{self, Preference};
 
 /// Frames are drawn into an off-screen buffer in ordinary RAM, which is much

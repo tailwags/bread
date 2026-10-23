@@ -19,9 +19,11 @@ use alloc::{string::String, vec::Vec};
 
 use arch::Prepared;
 
-use crate::config::FileRef;
-use crate::error::{Context, Result};
-use crate::firmware::memory::{Placement, alloc_pages};
+use crate::{
+    config::FileRef,
+    error::{Context, Result},
+    firmware::memory::{Placement, alloc_pages},
+};
 
 /// A `linux` entry.
 pub struct Linux {
@@ -50,7 +52,7 @@ impl Builder {
         Ok(true)
     }
 
-    pub fn finish(self) -> core::result::Result<Linux, &'static str> {
+    pub fn finish(self) -> Result<Linux, &'static str> {
         Ok(Linux {
             kernel: self.kernel.ok_or("kernel")?,
             initrd: self.initrd,

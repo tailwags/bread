@@ -1,10 +1,18 @@
 //! Reading keys.
 
-use effie::Status;
-use effie::protocols::{InputKey, SimpleTextInput};
-use effie::tables::{BootServices, SystemTable};
+use effie::{
+    Status,
+    protocols::{InputKey, SimpleTextInput},
+    tables::{BootServices, SystemTable},
+};
 
 use crate::error::{Context, Result};
+
+/// How long the keyboard must be quiet before a key counts, so a key still
+/// held from the menu (auto-repeating) cannot dismiss a screen before it is
+/// seen. Longer than the usual 500 ms typematic delay.
+const QUIET_MS: usize = 600;
+const POLL_MS: usize = 10;
 
 /// Waits for a key, however long it takes.
 pub fn wait(con_in: &mut SimpleTextInput, boot_services: &BootServices) -> Result<InputKey> {
@@ -33,12 +41,6 @@ pub fn within_a_second(
     None
 }
 
-/// How long the keyboard must be quiet before a key counts, so a key still
-/// held from the menu (auto-repeating) cannot dismiss a screen before it is
-/// seen. Longer than the usual 500 ms typematic delay.
-const QUIET_MS: usize = 600;
-const POLL_MS: usize = 10;
-
 /// Discards pending keys, then waits for a key that `accept` takes. Returns
 /// `None` once `timeout` seconds have passed, or straight away if there is no
 /// keyboard and no timeout. Allocation-free, for the panic handler.
@@ -52,6 +54,7 @@ pub fn wait_for_fresh(
     if let Some(con_in) = &mut con_in {
         let _ = con_in.reset(false);
     }
+
     let mut left = timeout.map(|seconds| seconds as usize * 1000);
     let mut quiet = 0;
     loop {

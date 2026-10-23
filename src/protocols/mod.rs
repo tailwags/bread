@@ -54,7 +54,7 @@ impl Builder {
     }
 
     /// Finishes the entry. Fails with the name of a missing key.
-    pub fn finish(self) -> core::result::Result<Protocol, &'static str> {
+    pub fn finish(self) -> Result<Protocol, &'static str> {
         Ok(match self {
             Builder::Linux(builder) => Protocol::Linux(builder.finish()?),
             Builder::Efi(builder) => Protocol::Efi(builder.finish()?),

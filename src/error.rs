@@ -6,11 +6,10 @@
 //! happens next (see `main`), and shows it on an error screen, which also
 //! saves the log. A message may contain `\n` to break lines on that screen.
 
-use alloc::borrow::Cow;
-use alloc::string::String;
+use alloc::{borrow::Cow, string::String};
 use core::fmt;
 
-pub type Result<T = ()> = core::result::Result<T, Error>;
+pub type Result<T = (), E = Error> = core::result::Result<T, E>;
 
 pub struct Error {
     message: Message,

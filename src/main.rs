@@ -11,7 +11,7 @@ mod panic;
 mod protocols;
 mod ui;
 
-use alloc::{format, string::String, vec::Vec};
+use alloc::{format, string::String, vec, vec::Vec};
 
 use config::{Config, Kind};
 use error::Error;
@@ -30,6 +30,8 @@ use ui::{
 /// How long the screen for a broken menu waits before rebooting, since the
 /// keyboard may be what broke.
 const FATAL_TIMEOUT: u32 = 30;
+
+const SETUP_FAILED: &str = "Could not reboot into the firmware setup";
 
 #[unsafe(no_mangle)]
 fn main() -> effie::Result {
@@ -65,10 +67,7 @@ fn main() -> effie::Result {
         log::warn!("the firmware cannot reboot into its setup");
     }
 
-    let mut actions = Vec::from([Action::BackToMenu, Action::Reboot]);
-    if firmware_setup {
-        actions.push(Action::FirmwareSetup);
-    }
+    let actions = actions_for(true, firmware_setup);
 
     let mut menu = Menu::new(&config, firmware_setup);
     let mut timeout = config.timeout;
@@ -110,11 +109,7 @@ fn main() -> effie::Result {
             }
             // There is no menu to go back to.
             Err(error) => {
-                let mut actions = Vec::from([Action::Reboot]);
-
-                if firmware_setup {
-                    actions.push(Action::FirmwareSetup);
-                }
+                let actions = actions_for(false, firmware_setup);
 
                 recover(
                     &font,
@@ -132,12 +127,26 @@ fn main() -> effie::Result {
     }
 }
 
-const SETUP_FAILED: &str = "Could not reboot into the firmware setup";
+/// The ways on to offer, given what this boot can do.
+fn actions_for(back_to_menu: bool, firmware_setup: bool) -> Vec<Action> {
+    let mut actions = if back_to_menu {
+        vec![Action::BackToMenu, Action::Reboot]
+    } else {
+        vec![Action::Reboot]
+    };
+
+    if firmware_setup {
+        actions.push(Action::FirmwareSetup);
+    }
+
+    actions
+}
 
 /// Shows `error` and carries out the user's choice. Returns only for
 /// [`Action::BackToMenu`].
 fn recover(font: &Font, title: &str, error: Error, actions: &[Action], timeout: Option<u32>) {
-    let (mut title, mut error) = (title, error);
+    let mut title = title;
+    let mut error = error;
 
     loop {
         match screens::error::show(font, title, &error, actions, timeout) {
@@ -155,11 +164,8 @@ fn recover(font: &Font, title: &str, error: Error, actions: &[Action], timeout: 
 /// comes back here, and F2 (when built with `config-error-firmware-setup`)
 /// gives a way out that does not depend on the config.
 fn config_error(error: Error) -> ! {
-    let mut actions = Vec::from([Action::Reboot]);
-
-    if cfg!(feature = "config-error-firmware-setup") && reset::setup_supported() {
-        actions.push(Action::FirmwareSetup);
-    }
+    let firmware_setup = cfg!(feature = "config-error-firmware-setup") && reset::setup_supported();
+    let actions = actions_for(false, firmware_setup);
 
     let title = "bread.conf could not be loaded";
 

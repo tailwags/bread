@@ -4,9 +4,6 @@
 //! added in padding, so offsets are stable. Parts bread has no use for (legacy
 //! BIOS data) are kept as opaque bytes. Field names follow the kernel.
 
-// Most fields are only read by the kernel.
-#![allow(dead_code)]
-
 use core::mem::{offset_of, size_of};
 
 #[repr(C, packed)]

@@ -10,8 +10,10 @@
 //! Fonts borrow their data and never allocate, so the panic handler can draw
 //! with them too.
 
-use crate::config::FileRef;
-use crate::error::{Error, Result};
+use crate::{
+    config::FileRef,
+    error::{Error, Result},
+};
 
 const MAGIC: usize = 0x864a_b572;
 const HAS_UNICODE_TABLE: usize = 1;
@@ -49,7 +51,7 @@ impl Font {
         Self::parse(data).map_err(|e| Error::new(format_args!("{file}: {e}")))
     }
 
-    pub const fn parse(bytes: &'static [u8]) -> core::result::Result<Self, &'static str> {
+    pub const fn parse(bytes: &'static [u8]) -> Result<Self, &'static str> {
         if bytes.len() < 32 {
             return Err("truncated header");
         }
@@ -115,6 +117,7 @@ impl Font {
         if let Some(&index) = self.ascii.get(c as usize) {
             return index.into();
         }
+
         if self.unicode.is_empty() {
             return if (c as usize) < self.glyph_count {
                 c as usize
@@ -122,6 +125,7 @@ impl Font {
                 0
             };
         }
+
         let mut buf = [0; 4];
         let needle = c.encode_utf8(&mut buf).as_bytes();
         self.unicode
@@ -174,7 +178,9 @@ const fn ascii_table(unicode: &[u8], glyph_count: usize) -> [u16; 128] {
     // In UTF-8 a byte below 0x80 is always a complete ASCII character, so the
     // table can be scanned byte by byte. The first glyph listing a character wins.
     let mut mapped = [false; 128];
-    let (mut i, mut glyph, mut in_sequence) = (0, 0, false);
+    let mut i = 0;
+    let mut glyph = 0;
+    let mut in_sequence = false;
     while i < unicode.len() && glyph < glyph_count {
         let b = unicode[i];
         if b == END {

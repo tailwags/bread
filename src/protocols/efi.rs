@@ -1,7 +1,9 @@
 //! Chainloading another UEFI application from the ESP.
 
-use crate::config::FileRef;
-use crate::error::{Context, Result};
+use crate::{
+    config::FileRef,
+    error::{Context, Result},
+};
 
 /// An `efi` entry.
 pub struct Efi {
@@ -23,7 +25,7 @@ impl Builder {
         Ok(true)
     }
 
-    pub fn finish(self) -> core::result::Result<Efi, &'static str> {
+    pub fn finish(self) -> Result<Efi, &'static str> {
         Ok(Efi {
             path: self.path.ok_or("path")?,
         })

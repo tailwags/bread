@@ -2,8 +2,11 @@
 //!
 //! Allocation-free, because the panic handler uses it.
 
-use effie::protocols::{FileHandle, FileMode};
-use effie::{WStr, w};
+use effie::{
+    WStr,
+    protocols::{FileHandle, FileMode},
+    w,
+};
 
 const PATH: &WStr = w!("\\EFI\\bread\\bread.log");
 const HEADER: &[u8] = b"bread log\r\n\

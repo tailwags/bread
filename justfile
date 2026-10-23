@@ -4,6 +4,12 @@ _:
 build:
     cargo build --release
 
+fmt:
+    cargo fmt
+
+fmt-check:
+    cargo fmt --check
+
 [working-directory('vm')]
 build-vm:
     rm -rf nixos.qcow2 result nixos-efi-vars.fd

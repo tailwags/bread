@@ -1,7 +1,6 @@
 //! The text console, for when there is no graphics output.
 
-use effie::WStr;
-use effie::protocols::SimpleTextOutput;
+use effie::{WStr, protocols::SimpleTextOutput};
 
 /// Prints `text`, converting to UTF-16 in fixed-size pieces so it needs no
 /// heap.

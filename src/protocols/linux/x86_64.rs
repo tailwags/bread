@@ -5,14 +5,16 @@ mod bootparam;
 
 use core::{mem::size_of, ptr};
 
-use effie::protocols::{GopPixelFormat, GraphicsOutput};
-use effie::tables::{MemoryMap, MemoryType};
+use effie::{
+    protocols::{GopPixelFormat, GraphicsOutput},
+    tables::{MemoryMap, MemoryType},
+};
 
 use self::bootparam::{BootParams, E820Entry, EfiInfo, ScreenInfo, SetupHeader};
 use super::{Linux, load_initrd};
-use crate::error::{Context, Result, ensure};
-use crate::firmware::memory::{
-    PAGE_SIZE, Placement, alloc_aligned, alloc_pages, exit_boot_services,
+use crate::{
+    error::{Context, Result, ensure},
+    firmware::memory::{PAGE_SIZE, Placement, alloc_aligned, alloc_pages, exit_boot_services},
 };
 
 /// Offset of the setup header, both in the image and in `boot_params`.
@@ -123,7 +125,9 @@ fn read_header(image: &[u8]) -> Result<SetupHeader> {
             .read_unaligned()
     };
 
-    let (magic, version, xloadflags) = (hdr.header, hdr.version, hdr.xloadflags);
+    let magic = hdr.header;
+    let version = hdr.version;
+    let xloadflags = hdr.xloadflags;
     ensure!(magic == MAGIC, "kernel is not a bzImage");
     ensure!(
         version >= MIN_VERSION,
@@ -215,7 +219,8 @@ fn describe_framebuffer(info: &mut ScreenInfo) {
         u32::try_from(size),
     ) else {
         log::warn!(
-            "screen_info cannot describe the framebuffer: {width}x{height}, {linelength} byte lines, {size} bytes"
+            "screen_info cannot describe the framebuffer: {width}x{height}, {linelength} byte \
+             lines, {size} bytes"
         );
         return;
     };

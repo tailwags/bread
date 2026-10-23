@@ -22,17 +22,18 @@
 //! end
 //! ```
 
+mod file_ref;
+
 use alloc::{string::String, vec::Vec};
 use core::{fmt, str::Lines};
 
-mod file_ref;
+use crate::{
+    error::{Error, Result, ensure},
+    firmware::{fs, video::Preference},
+    protocols::{Builder, Protocol},
+};
 
 pub use file_ref::FileRef;
-
-use crate::error::{Error, Result, ensure};
-use crate::firmware::fs;
-use crate::firmware::video::Preference;
-use crate::protocols::{Builder, Protocol};
 
 const PATH: &str = "\\EFI\\bread\\bread.conf";
 
@@ -140,7 +141,8 @@ impl<'a> Parser<'a> {
     fn entry(&mut self, keyword: &str, id: &str) -> Result<Entry> {
         let mut name = None;
         let mut protocol = Builder::new(keyword);
-        let (mut default, mut entries) = (None, Vec::new());
+        let mut default = None;
+        let mut entries = Vec::new();
 
         loop {
             let Some((key, value)) = self.next() else {

@@ -9,8 +9,7 @@
 //! Every step is best-effort and allocation-free, since the heap may be what
 //! failed. A panic inside the handler halts.
 
-use core::fmt::Write;
-use core::panic::PanicInfo;
+use core::{fmt::Write, panic::PanicInfo};
 
 use effie_log::Buf;
 

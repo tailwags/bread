@@ -2,16 +2,20 @@
 //! Unlike the crash screen they may allocate, and the caller decides which
 //! ways on to offer.
 
-use alloc::{format, string::String, vec::Vec};
+use alloc::{format, string::String, vec, vec::Vec};
 
 use effie::protocols::InputKey;
 
-use crate::error::Error;
-use crate::logfile;
-use crate::ui::font::Font;
-use crate::ui::input;
-use crate::ui::report::{self, Report};
-use crate::ui::theme;
+use crate::{
+    error::Error,
+    logfile,
+    ui::{
+        font::Font,
+        input,
+        report::{self, Report},
+        theme,
+    },
+};
 
 /// A way on from an error screen.
 #[derive(Clone, Copy)]
@@ -60,7 +64,7 @@ pub fn show(
 
     let body = format!("{error}");
     let reboot_note: String;
-    let mut notes = Vec::from([logfile::note(saved)]);
+    let mut notes = vec![logfile::note(saved)];
     if let Some(seconds) = timeout {
         reboot_note = format!("bread reboots in {seconds} seconds");
         notes.push(&reboot_note);

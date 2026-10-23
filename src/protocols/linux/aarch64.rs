@@ -6,8 +6,10 @@
 use core::{arch::asm, mem::size_of};
 
 use super::{Linux, load_initrd};
-use crate::error::{Context, Error, Result, ensure};
-use crate::firmware::memory::{Placement, alloc_aligned, exit_boot_services};
+use crate::{
+    error::{Context, Error, Result, ensure},
+    firmware::memory::{Placement, alloc_aligned, exit_boot_services},
+};
 
 /// The Image header, from arch/arm64/include/asm/image.h. All fields are
 /// little-endian.

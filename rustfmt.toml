@@ -1,0 +1,6 @@
+max_width = 100
+imports_granularity = "Crate"
+
+# Rewraps the few log messages too long for one line, so no line is over
+# `max_width`. The `\` continuation drops the newline and the indentation.
+format_strings = true

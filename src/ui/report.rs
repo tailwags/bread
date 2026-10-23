@@ -5,14 +5,17 @@
 //! Text is drawn straight to the screen one glyph at a time, or printed on the
 //! text console when there is no graphics output.
 
-use effie::protocols::{BltPixel, GraphicsOutput};
-use effie::tables::{BootServices, SystemTable};
+use effie::{
+    protocols::{BltPixel, GraphicsOutput},
+    tables::{BootServices, SystemTable},
+};
 
-use super::chrome;
-use super::console;
-use super::font::Font;
-use super::surface::{Direct, Surface};
-use super::theme::{MARGIN, Palette};
+use super::{
+    chrome, console,
+    font::Font,
+    surface::{Direct, Surface},
+    theme::{MARGIN, Palette},
+};
 
 /// Longest body line, in characters, so text stays readable on wide screens.
 const MAX_COLUMNS: usize = 100;
@@ -60,7 +63,9 @@ impl<'a> Iterator for Wrap<'a> {
     fn next(&mut self) -> Option<&'a str> {
         let rest = self.rest?;
         let bytes = rest.as_bytes();
-        let (mut chars, mut space, mut slash) = (0, 0, 0);
+        let mut chars = 0;
+        let mut space = 0;
+        let mut slash = 0;
         // Index of the first character that does not fit, or of a `\n`.
         let mut end = 0;
         while end < bytes.len() {
