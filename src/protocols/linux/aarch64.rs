@@ -5,11 +5,31 @@
 
 use core::{arch::asm, mem::size_of};
 
-use linux_raw_sys::image::arm64_image_header;
-
 use super::{Linux, load_initrd};
 use crate::error::{Context, Error, Result, ensure};
 use crate::firmware::memory::{Placement, alloc_aligned, exit_boot_services};
+
+/// The Image header, from arch/arm64/include/asm/image.h. All fields are
+/// little-endian.
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct ImageHeader {
+    code0: u32,
+    code1: u32,
+    text_offset: u64,
+    image_size: u64,
+    flags: u64,
+    res2: u64,
+    res3: u64,
+    res4: u64,
+    magic: u32,
+    res5: u32,
+}
+
+const _: () = {
+    assert!(size_of::<ImageHeader>() == 64);
+    assert!(core::mem::offset_of!(ImageHeader, magic) == 0x38);
+};
 
 /// "ARM\x64"
 const MAGIC: u32 = 0x644d_5241;
@@ -23,11 +43,11 @@ pub struct Prepared {
 
 pub fn prepare(entry: &Linux, image: &[u8]) -> Result<Prepared> {
     ensure!(
-        image.len() >= size_of::<arm64_image_header>(),
+        image.len() >= size_of::<ImageHeader>(),
         "kernel image is too small"
     );
     // SAFETY: in bounds, checked above.
-    let hdr = unsafe { image.as_ptr().cast::<arm64_image_header>().read_unaligned() };
+    let hdr = unsafe { image.as_ptr().cast::<ImageHeader>().read_unaligned() };
     ensure!(
         u32::from_le(hdr.magic) == MAGIC,
         "kernel is not an arm64 Image"

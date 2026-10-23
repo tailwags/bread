@@ -1,12 +1,14 @@
 //! The x86-64 Linux boot protocol, entering through the kernel's 64-bit
 //! entry point. See Documentation/arch/x86/boot.rst.
 
+mod bootparam;
+
 use core::{mem::size_of, ptr};
 
 use effie::protocols::{GopPixelFormat, GraphicsOutput};
 use effie::tables::{MemoryMap, MemoryType};
-use linux_raw_sys::bootparam::{boot_e820_entry, boot_params, efi_info, screen_info, setup_header};
 
+use self::bootparam::{BootParams, E820Entry, EfiInfo, ScreenInfo, SetupHeader};
 use super::{Linux, load_initrd};
 use crate::error::{Context, Result, ensure};
 use crate::firmware::memory::{
@@ -33,7 +35,7 @@ const VIDEO_CAPABILITY_64BIT_BASE: u32 = 1 << 1;
 
 pub struct Prepared {
     kernel_entry: usize,
-    boot_params: &'static mut boot_params,
+    boot_params: &'static mut BootParams,
 }
 
 pub fn prepare(entry: &Linux, image: &[u8]) -> Result<Prepared> {
@@ -48,15 +50,15 @@ pub fn prepare(entry: &Linux, image: &[u8]) -> Result<Prepared> {
     let initrd = load_initrd(&entry.initrd, Placement::Below(hdr.initrd_addr_max.into()))?;
     let cmdline = load_cmdline(entry.cmdline.as_deref().unwrap_or_default())?;
 
-    let zero_page = alloc_pages(size_of::<boot_params>(), above_4g)
+    let zero_page = alloc_pages(size_of::<BootParams>(), above_4g)
         .context("allocating memory for boot_params")?;
     // The setup header is copied as-is. It ends at 0x202 plus the byte at 0x201.
     let header_end =
-        (0x202 + usize::from(image[0x201])).min(SETUP_HEADER + size_of::<setup_header>());
+        (0x202 + usize::from(image[0x201])).min(SETUP_HEADER + size_of::<SetupHeader>());
     zero_page[SETUP_HEADER..header_end].copy_from_slice(&image[SETUP_HEADER..header_end]);
     // SAFETY: the allocation is large enough, and `boot_params` is packed, so
     // any address is aligned for it.
-    let bp = unsafe { &mut *zero_page.as_mut_ptr().cast::<boot_params>() };
+    let bp = unsafe { &mut *zero_page.as_mut_ptr().cast::<BootParams>() };
 
     bp.hdr.type_of_loader = UNDEFINED_LOADER;
     bp.hdr.cmd_line_ptr = cmdline;
@@ -91,7 +93,7 @@ impl Prepared {
         // Boot services are gone: no allocating and no logging from here on.
         fill_e820(bp, &map);
         let memmap = map.buffer.as_ptr() as u64;
-        bp.efi_info = efi_info {
+        bp.efi_info = EfiInfo {
             efi_loader_signature: u32::from_le_bytes(*b"EL64"),
             efi_systab: system_table as u32,
             efi_systab_hi: (system_table >> 32) as u32,
@@ -107,9 +109,9 @@ impl Prepared {
     }
 }
 
-fn read_header(image: &[u8]) -> Result<setup_header> {
+fn read_header(image: &[u8]) -> Result<SetupHeader> {
     ensure!(
-        image.len() >= SETUP_HEADER + size_of::<setup_header>(),
+        image.len() >= SETUP_HEADER + size_of::<SetupHeader>(),
         "kernel image is too small"
     );
     // SAFETY: in bounds, checked above.
@@ -117,7 +119,7 @@ fn read_header(image: &[u8]) -> Result<setup_header> {
         image
             .as_ptr()
             .add(SETUP_HEADER)
-            .cast::<setup_header>()
+            .cast::<SetupHeader>()
             .read_unaligned()
     };
 
@@ -138,7 +140,7 @@ fn read_header(image: &[u8]) -> Result<setup_header> {
 /// Copies the protected-mode kernel to its preferred address or, if it is
 /// relocatable, to any address with the alignment it asks for. Returns the
 /// 64-bit entry point.
-fn load_kernel(image: &[u8], hdr: &setup_header, above_4g: Placement) -> Result<usize> {
+fn load_kernel(image: &[u8], hdr: &SetupHeader, above_4g: Placement) -> Result<usize> {
     let setup_sectors = match hdr.setup_sects {
         0 => 4,
         n => usize::from(n),
@@ -182,7 +184,7 @@ fn load_cmdline(cmdline: &str) -> Result<u32> {
 }
 
 /// Describes the current GOP framebuffer so the kernel can keep drawing on it.
-fn describe_framebuffer(info: &mut screen_info) {
+fn describe_framebuffer(info: &mut ScreenInfo) {
     let boot_services = effie::system_table().boot_services();
     let Ok(gop) = boot_services.locate_protocol::<GraphicsOutput>() else {
         return;
@@ -197,7 +199,7 @@ fn describe_framebuffer(info: &mut screen_info) {
     };
     let base = mode.frame_buffer_base;
 
-    info.orig_video_isVGA = VIDEO_TYPE_EFI;
+    info.orig_video_is_vga = VIDEO_TYPE_EFI;
     info.capabilities = VIDEO_CAPABILITY_64BIT_BASE | VIDEO_CAPABILITY_SKIP_QUIRKS;
     info.lfb_base = base as u32;
     info.ext_lfb_base = (base >> 32) as u32;
@@ -223,7 +225,7 @@ fn describe_framebuffer(info: &mut screen_info) {
 
 /// Converts the UEFI memory map to the e820 table, merging adjacent ranges of
 /// the same type.
-fn fill_e820(bp: &mut boot_params, map: &MemoryMap) {
+fn fill_e820(bp: &mut BootParams, map: &MemoryMap) {
     let table = &mut bp.e820_table;
     let mut len: usize = 0;
     for descriptor in map.iter() {
@@ -241,7 +243,7 @@ fn fill_e820(bp: &mut boot_params, map: &MemoryMap) {
         if len == table.len() {
             break;
         }
-        table[len] = boot_e820_entry { addr, size, type_ };
+        table[len] = E820Entry { addr, size, type_ };
         len += 1;
     }
     bp.e820_entries = len as u8;

@@ -14,11 +14,6 @@ effie-log = { version = "0.2.1" }
 log = { version = "0.4", default-features = false, features = [
     "release_max_level_info",
 ] }
-linux-raw-sys = { version = "0.12.1", default-features = false, features = [
-    "no_std",
-    "bootparam",
-    "image",
-] }
 blakity = "0.1.1"
 
 [features]
