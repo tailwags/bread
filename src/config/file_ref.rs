@@ -7,14 +7,18 @@ use alloc::{
 };
 use core::{fmt, str::FromStr};
 
-use crate::error::{Error, Result, ensure};
-use crate::firmware::fs;
+use blakity::Hash;
+
+use crate::{
+    error::{Error, Result, ensure},
+    firmware::fs,
+};
 
 /// A file on the ESP as named in the config, optionally pinned to its BLAKE3
 /// digest with a `#blake3:<hex>` suffix.
 pub struct FileRef {
     path: String,
-    blake3: Option<blake3::Hash>,
+    blake3: Option<Hash>,
 }
 
 impl FileRef {
@@ -23,9 +27,9 @@ impl FileRef {
         let data = fs::read_file(&self.path)?;
 
         if let Some(expected) = self.blake3 {
-            let actual = blake3::hash(&data);
+            let actual = blakity::hash(&data);
             ensure!(
-                actual.as_bytes() == expected.as_bytes(),
+                actual == expected,
                 "{}: BLAKE3 mismatch\nexpected {expected}\ngot      {actual}",
                 self.path,
             );
@@ -53,8 +57,11 @@ impl FromStr for FileRef {
             )));
         };
 
-        let hash = blake3::Hash::from_hex(hex)
-            .map_err(|e| Error::new(format!("{value}: invalid BLAKE3 digest: {e}")))?;
+        let hash = Hash::from_hex(hex).ok_or_else(|| {
+            Error::new(format!(
+                "{value}: invalid BLAKE3 digest: expected 64 hex digits"
+            ))
+        })?;
 
         Ok(Self {
             path: path.to_string(),
