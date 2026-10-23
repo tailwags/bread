@@ -199,15 +199,36 @@ fn describe_framebuffer(info: &mut ScreenInfo) {
     };
     let base = mode.frame_buffer_base;
 
+    // `screen_info` describes the framebuffer with narrower fields than the GOP
+    // mode does. A truncated line length or size would make the kernel draw
+    // outside the framebuffer, so leave `screen_info` zeroed and the kernel on
+    // the firmware's mode rather than hand it wrong values. `video::apply`
+    // avoids such modes, but the firmware may have refused the switch.
+    let width = mode_info.horizontal_resolution;
+    let height = mode_info.vertical_resolution;
+    let linelength = u64::from(mode_info.pixels_per_scan_line) * 4;
+    let size = mode.frame_buffer_size;
+    let (Ok(lfb_width), Ok(lfb_height), Ok(lfb_linelength), Ok(lfb_size)) = (
+        u16::try_from(width),
+        u16::try_from(height),
+        u16::try_from(linelength),
+        u32::try_from(size),
+    ) else {
+        log::warn!(
+            "screen_info cannot describe the framebuffer: {width}x{height}, {linelength} byte lines, {size} bytes"
+        );
+        return;
+    };
+
     info.orig_video_is_vga = VIDEO_TYPE_EFI;
     info.capabilities = VIDEO_CAPABILITY_64BIT_BASE | VIDEO_CAPABILITY_SKIP_QUIRKS;
     info.lfb_base = base as u32;
     info.ext_lfb_base = (base >> 32) as u32;
-    info.lfb_size = mode.frame_buffer_size as u32;
-    info.lfb_width = mode_info.horizontal_resolution as u16;
-    info.lfb_height = mode_info.vertical_resolution as u16;
+    info.lfb_size = lfb_size;
+    info.lfb_width = lfb_width;
+    info.lfb_height = lfb_height;
     info.lfb_depth = 32;
-    info.lfb_linelength = (mode_info.pixels_per_scan_line * 4) as u16;
+    info.lfb_linelength = lfb_linelength;
     info.red_size = 8;
     info.red_pos = red_pos;
     info.green_size = 8;
@@ -216,11 +237,7 @@ fn describe_framebuffer(info: &mut ScreenInfo) {
     info.blue_pos = blue_pos;
     info.rsvd_size = 8;
     info.rsvd_pos = 24;
-    log::info!(
-        "framebuffer: {}x{} at {base:#x}",
-        mode_info.horizontal_resolution,
-        mode_info.vertical_resolution
-    );
+    log::info!("framebuffer: {width}x{height} at {base:#x}");
 }
 
 /// Converts the UEFI memory map to the e820 table, merging adjacent ranges of

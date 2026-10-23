@@ -122,6 +122,7 @@ show up in a folder under their generation.
 | `boot.loader.bread.timeout`            | `5`     | Seconds before the default entry boots. `null` waits forever.                                     |
 | `boot.loader.bread.maxGenerations`     | `null`  | Maximum number of generations in the menu. `null` shows all of them.                              |
 | `boot.loader.bread.font`               | `null`  | Path to a PSF2 font for the menu. `null` uses the built-in font.                                  |
+| `boot.loader.bread.videoMode`          | `null`  | Preferred display resolution, e.g. `{ width = 1920; height = 1080; }`. `null` uses the largest usable mode. |
 | `boot.loader.bread.efiInstallAsRemovable` | `false` | Install to `EFI/BOOT/BOOT<ARCH>.EFI` and skip registering a boot entry with efibootmgr.       |
 | `boot.loader.bread.extraEntries`       | `[ ]`   | Extra `linux` or `efi` entries, added after the NixOS ones.                                       |
 | `boot.loader.bread.extraEntriesAttrs`  | `[ ]`   | Extra entries as raw attribute sets, for folders or anything `extraEntries` does not cover.       |

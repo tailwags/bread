@@ -3,10 +3,11 @@
 use alloc::{vec, vec::Vec};
 
 use effie::Protocol;
-use effie::protocols::{BltPixel, GopPixelFormat, GraphicsOutput};
+use effie::protocols::{BltPixel, GraphicsOutput};
 
 use super::font::Font;
 use super::surface::Surface;
+use crate::firmware::video::{self, Preference};
 
 /// Frames are drawn into an off-screen buffer in ordinary RAM, which is much
 /// faster than drawing into the framebuffer, then copied to the screen with
@@ -20,33 +21,13 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    /// Switches the display to its largest mode with a linear RGB or BGR
-    /// framebuffer. Only those modes qualify because the kernel keeps using the
-    /// framebuffer after boot. Returns `None` if there is no such mode.
-    pub fn acquire(font: Font) -> Option<Self> {
+    /// Switches the display to the mode chosen for `preference` and allocates
+    /// the off-screen buffer for it. Returns `None` if there is no usable GOP
+    /// mode, so the caller has to use the text console.
+    pub fn acquire(font: Font, preference: Preference) -> Option<Self> {
         let boot_services = effie::system_table().boot_services();
         let mut gop = boot_services.locate_protocol::<GraphicsOutput>().ok()?;
-
-        let best = (0..gop.current_mode().max_mode)
-            .filter_map(|mode| Some((mode, gop.query_mode(mode).ok()?)))
-            .filter(|(_, info)| {
-                matches!(info.pixel_format, GopPixelFormat::RGB | GopPixelFormat::BGR)
-            })
-            .max_by_key(|(_, info)| {
-                u64::from(info.horizontal_resolution) * u64::from(info.vertical_resolution)
-            });
-        let Some((mode, _)) = best else {
-            log::warn!("no display mode with a linear framebuffer, using the text console");
-            return None;
-        };
-        if gop.current_mode().mode != mode {
-            gop.set_mode(mode).ok()?;
-        }
-
-        let info = gop.current_mode_info();
-        let width = info.horizontal_resolution as usize;
-        let height = info.vertical_resolution as usize;
-        log::debug!("display mode {mode}: {width}x{height}");
+        let (width, height) = video::apply(&mut gop, preference)?;
 
         Some(Self {
             gop,

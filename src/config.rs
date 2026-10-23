@@ -9,6 +9,7 @@
 //! ```text
 //! timeout 5
 //! firmware-setup yes
+//! video 1920x1080
 //! default nixos
 //! folder nixos
 //!   name NixOS
@@ -30,6 +31,7 @@ pub use file_ref::FileRef;
 
 use crate::error::{Error, Result, ensure};
 use crate::firmware::fs;
+use crate::firmware::video::Preference;
 use crate::protocols::{Builder, Protocol};
 
 const PATH: &str = "\\EFI\\bread\\bread.conf";
@@ -41,6 +43,8 @@ pub struct Config {
     pub default: Option<String>,
     /// PSF2 font for the menu, instead of the built-in one.
     pub font: Option<FileRef>,
+    /// Resolution to prefer for the menu and the kernel framebuffer.
+    pub video: Preference,
     /// Offer rebooting into the firmware setup, if the firmware supports it.
     pub firmware_setup: bool,
     pub entries: Vec<Entry>,
@@ -60,6 +64,7 @@ impl Config {
             timeout: None,
             default: None,
             font: None,
+            video: Preference::Auto,
             firmware_setup: false,
             entries: Vec::new(),
         };
@@ -73,6 +78,7 @@ impl Config {
                 }
                 "default" => config.default = Some(value.into()),
                 "font" => config.font = Some(parser.file(value)?),
+                "video" => config.video = value.parse().map_err(|e| parser.error(e))?,
                 "firmware-setup" => config.firmware_setup = parser.yes_no(value)?,
                 _ if opens_entry(key) => config.entries.push(parser.entry(key, value)?),
                 "end" => return Err(parser.error("'end' outside an entry")),

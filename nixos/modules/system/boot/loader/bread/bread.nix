@@ -43,6 +43,11 @@ let
       efiBinary = "${cfg.package}/share/bread/bread.efi";
       inherit efiFile;
       inherit (cfg) timeout font firmwareSetup additionalFiles;
+      video =
+        if cfg.videoMode == null then
+          null
+        else
+          "${toString cfg.videoMode.width}x${toString cfg.videoMode.height}";
       maxGenerations = if cfg.maxGenerations == null then 0 else cfg.maxGenerations;
       efiRemovable = cfg.efiInstallAsRemovable;
       extraEntries = allExtraEntries;
@@ -109,6 +114,34 @@ in
         {val}`null` uses the built-in 6×13 Cozette font embedded in bread,
         which only covers Latin-1. A font with a unicode table can cover
         any characters it has glyphs for.
+      '';
+    };
+
+    videoMode = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.submodule {
+          options = {
+            width = lib.mkOption {
+              type = lib.types.ints.between 1 65535;
+              description = "Horizontal resolution in pixels, 1 to 65535.";
+            };
+            height = lib.mkOption {
+              type = lib.types.ints.between 1 65535;
+              description = "Vertical resolution in pixels, 1 to 65535.";
+            };
+          };
+        }
+      );
+      default = null;
+      example = { width = 1920; height = 1080; };
+      description = ''
+        Preferred resolution for the boot menu and, on x86-64, the framebuffer
+        handed to the kernel. bread uses the exact mode if the firmware offers
+        it, otherwise the largest mode that fits inside it, otherwise the mode
+        closest to it. If the firmware refuses the chosen mode, bread keeps the
+        current one, as long as that one is linear. Only modes with a linear
+        framebuffer that the kernel's {file}`screen_info` can describe are used.
+        {val}`null` uses the largest usable mode.
       '';
     };
 

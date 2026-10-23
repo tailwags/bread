@@ -4,3 +4,4 @@
 pub mod fs;
 pub mod memory;
 pub mod reset;
+pub mod video;

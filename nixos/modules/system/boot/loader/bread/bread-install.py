@@ -252,6 +252,7 @@ def install_bootloader() -> None:
     conf = {
         "timeout": config["timeout"],
         # Left out when null, so bread's own default applies.
+        "video": config["video"],
         "firmware-setup": config["firmwareSetup"],
         "default": "nixos",
         # The system profile's folder is the default entry, so always write it.

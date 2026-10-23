@@ -25,6 +25,7 @@ At the top level:
 | `timeout` | Seconds before the default entry boots        | Wait forever           |
 | `default` | Id of the entry selected at startup           | The first entry        |
 | `font`    | A file reference to a PSF2 font for the menu  | The built-in font      |
+| `video`   | Preferred display resolution, or `auto`       | `auto`                 |
 
 Every entry needs a `name`, the label shown in the menu. The other keys depend
 on the type of entry:
@@ -55,6 +56,31 @@ You can get the digest with `b3sum`.
 
 The NixOS installer pins the kernels, initrds, additional files and font it
 installs for you, so on NixOS you do not need to add the digests yourself.
+
+## Video mode
+
+By default, bread draws the menu on the largest mode it can use. To prefer a
+different resolution, for example because 4K makes the text too small:
+
+```
+video 1920x1080
+```
+
+Bread uses that mode if the firmware has it, and otherwise the largest mode
+that fits inside it, so the screen is never larger than requested. If no mode
+fits, it uses the mode whose size is closest to the request. Width and height
+are 1 to 65535. If the firmware refuses the chosen mode, bread keeps the mode it
+already has, as long as that one is linear.
+
+Only modes with a linear RGB or BGR framebuffer are considered, because the
+kernel keeps using the framebuffer after boot. If there is no such mode, bread
+uses the text console. On x86-64 the mode is also the framebuffer the kernel is
+handed, so bread only picks modes the kernel's `screen_info` can describe:
+width and height up to 65535, and a line length of at most 65535 bytes (the
+stride in pixels times 4). If the framebuffer size does not fit in 32 bits,
+bread leaves `screen_info` zeroed and warns instead of describing it. A kernel
+with modesetting may pick another mode later. On aarch64 it only affects the
+menu until device-tree patching is implemented.
 
 ## Example
 

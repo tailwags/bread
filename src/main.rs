@@ -72,11 +72,12 @@ fn main() -> effie::Result {
 
     let mut menu = Menu::new(&config, firmware_setup);
     let mut timeout = config.timeout;
+    let video = config.video;
 
     loop {
         // Acquired again on every pass: a chainloaded application may have
         // changed the display mode.
-        let mut canvas = Canvas::acquire(font.clone());
+        let mut canvas = Canvas::acquire(font.clone(), video);
         let choice = menu.run(canvas.as_mut(), timeout);
 
         // Frees the off-screen buffer (about 33 MB at 4K), which could sit
