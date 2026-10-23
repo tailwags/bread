@@ -2,7 +2,8 @@
 
 # NixOS boot loader installer for bread, modelled on nixpkgs' limine-install.py:
 # kernels and initrds are copied to \EFI\bread\kernels under store-path-derived
-# names, and files there that no entry references any more are removed.
+# names, and files there that no entry references any more are removed. File
+# references are pinned to BLAKE3 digests, so bread verifies them before booting.
 
 import ctypes
 import filecmp
@@ -21,6 +22,10 @@ kernels_dir = os.path.join(bread_dir, "kernels")
 files_dir = os.path.join(bread_dir, "files")
 present: set[str] = set()
 kept: set[str] = set()
+# BLAKE3 digests of installed files, and the config keys whose values are file
+# references, which pin() pins them to (see CONFIG.md).
+hashes: dict[str, str] = {}
+pin_keys = {"kernel", "initrd", "path", "font"}
 
 
 def get_system_path(profile: str, gen: int | None = None) -> str:
@@ -65,15 +70,42 @@ def remove_file(path: str) -> None:
         os.remove(path)
 
 
+def esp_key(path: str) -> str:
+    # The ESP is FAT, which ignores case and accepts either slash; bread's
+    # config writes the paths with backslashes.
+    return ntpath.normpath(path.replace("/", "\\")).lstrip("\\").lower()
+
+
+def remember(dst: str, src: str) -> None:
+    """Record the digest of the file installed at dst, so that config
+    references to it can be pinned. src is hashed rather than dst, because a
+    file whose name is already installed is not copied again on rebuilds: src
+    is what dst is supposed to hold.
+    """
+    key = esp_key(os.path.relpath(dst, esp))
+    if key not in hashes:
+        # hashlib has no BLAKE3; b3sum prints "<hex>  <name>".
+        output = subprocess.check_output([config["b3sum"], src], text=True)
+        hashes[key] = output.split()[0]
+
+
+def pin(ref: str) -> str:
+    """Pin a file reference to its digest, if we installed the file."""
+    digest = hashes.get(esp_key(ref))
+    return ref if digest is None else f"{ref}#blake3:{digest}"
+
+
 def copy_kernel(path: str) -> str:
     # The store hash makes the name content-addressed: a kernel or initrd
     # shared across generations is copied once.
     path = os.path.realpath(path)
     name = f"{os.path.basename(os.path.dirname(path))}-{os.path.basename(path)}"
+    dst = os.path.join(kernels_dir, name)
     if name not in present:
-        copy_file(path, os.path.join(kernels_dir, name))
+        copy_file(path, dst)
         present.add(name)
     kept.add(name)
+    remember(dst, path)
     return f"\\EFI\\bread\\kernels\\{name}"
 
 
@@ -87,6 +119,7 @@ def copy_additional_files() -> set[str]:
             sys.exit(f"error: boot.loader.bread.additionalFiles: {src} (for {name}) is not a file")
         dst = os.path.join(files_dir, *name.split("/"))
         copy_file(src, dst)
+        remember(dst, src)
         copied.add(dst.lower())
     return copied
 
@@ -122,6 +155,7 @@ def config_entry(entry_id: str, boot_json: dict, label: str) -> dict:
             commit(path + ".tmp", path)
             present.add(name)
             kept.add(name)
+            remember(path, path)
             initrd.append(f"\\EFI\\bread\\kernels\\{name}")
 
     return {
@@ -196,7 +230,8 @@ def to_conf(fields: dict, indent: str = "") -> list[str]:
                 lines += to_conf(entry, indent + "  ")
                 lines.append(indent + "end")
         elif key not in ("type", "id") and value is not None:
-            lines += [conf_line(indent, key, v) for v in (value if isinstance(value, list) else [value])]
+            values = value if isinstance(value, list) else [value]
+            lines += [conf_line(indent, key, pin(v) if key in pin_keys else v) for v in values]
     return lines
 
 
@@ -226,6 +261,7 @@ def install_bootloader() -> None:
     font = os.path.join(bread_dir, "bread.psf")
     if config["font"]:
         copy_file(config["font"], font)
+        remember(font, config["font"])
         conf["font"] = "\\EFI\\bread\\bread.psf"
     else:
         remove_file(font)

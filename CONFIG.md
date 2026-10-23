@@ -53,6 +53,9 @@ kernel \EFI\bread\kernels\bzImage#blake3:d7864a…eb93
 
 You can get the digest with `b3sum`.
 
+The NixOS installer pins the kernels, initrds, additional files and font it
+installs for you, so on NixOS you do not need to add the digests yourself.
+
 ## Example
 
 ```

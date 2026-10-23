@@ -38,6 +38,7 @@ let
     builtins.toJSON {
       nixEnv = "${config.nix.package}/bin/nix-env";
       efibootmgr = "${pkgs.efibootmgr}/bin/efibootmgr";
+      b3sum = "${pkgs.b3sum}/bin/b3sum";
       inherit (efi) efiSysMountPoint canTouchEfiVariables;
       efiBinary = "${cfg.package}/share/bread/bread.efi";
       inherit efiFile;
