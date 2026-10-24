@@ -3,12 +3,6 @@
 version = 4
 
 [[package]]
-name = "bitflags"
-version = "2.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
-
-[[package]]
 name = "blakity"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -26,20 +20,19 @@ dependencies = [
 
 [[package]]
 name = "effie"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a9696d8b16101bbbcc795f2dd1d8875c8acd27f33020477374786788f093969"
+checksum = "b7095e05fd16a41610524dfcc97cdd99799b1d6dd74e986ca2407e481730097a"
 dependencies = [
- "bitflags",
  "effie-macros",
  "log",
 ]
 
 [[package]]
 name = "effie-log"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fde1b308c603aa33c9553697cf137c61b62cf1eb988feb06450f576c70237cb"
+checksum = "649fdec6eb74751205cbee7c49adaff56ffb8d621dcbf63e2bbbe2ada4508303"
 dependencies = [
  "effie",
  "log",
@@ -47,9 +40,9 @@ dependencies = [
 
 [[package]]
 name = "effie-macros"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc23452d476ac05717af1484169afbd617831297b286911a2cbd4064b552fea5"
+checksum = "c2e6edb0b097e42b87743186d32d85c60ee6d810f8414c124cfa6f4f20eb7d14"
 
 [[package]]
 name = "log"
